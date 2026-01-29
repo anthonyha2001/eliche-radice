@@ -60,9 +60,6 @@ app.use(cors(corsOptions));
 // Body parser
 app.use(express.json());
 
-// OPTIONS handler - MUST come after cors() middleware
-app.options('*', cors(corsOptions));
-
 // Health check endpoint (defined before Socket.IO, so no io reference)
 app.get('/health', (req, res) => {
   res.status(200).json({ 
