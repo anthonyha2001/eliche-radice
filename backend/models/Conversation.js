@@ -1,485 +1,267 @@
-const { randomUUID } = require('crypto');
-const { getDatabase } = require('../db/connection');
+const pool = require('../db/connection');
 
-/**
- * Conversation model - handles all database operations for conversations
- */
 const Conversation = {
-  /**
-   * Create a new conversation
-   * @param {string} customerId - ID of the customer
-   * @param {string} priority - Priority level (default: 'normal')
-   * @param {string} customerName - Customer name (optional)
-   * @param {string} customerPhone - Customer phone (optional)
-   * @returns {Promise<Object>} Complete conversation object
-   */
   create: async (customerId, priority = 'normal', customerName = null, customerPhone = null) => {
+    const timestamp = Date.now();
+    
+    const query = `
+      INSERT INTO conversations 
+      (customer_id, status, priority, created_at, last_message_at, customer_name, customer_phone)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING *
+    `;
+    
     try {
-      const db = await getDatabase();
-      const id = randomUUID();
-      const timestamp = Date.now();
-      const status = 'active';
-
-      return new Promise((resolve, reject) => {
-        db.run(
-          'INSERT INTO conversations (id, customer_id, status, priority, created_at, last_message_at, customer_name, customer_phone) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-          [id, customerId, status, priority, timestamp, timestamp, customerName, customerPhone],
-          function(err) {
-            if (err) {
-              console.error('Failed to create conversation:', err.message);
-              reject(err);
-              return;
-            }
-
-            const conversation = {
-              id,
-              customerId,
-              status,
-              priority,
-              createdAt: timestamp,
-              lastMessageAt: timestamp,
-              customerName: customerName || undefined,
-              customerPhone: customerPhone || undefined,
-            };
-
-            resolve(conversation);
-          }
-        );
-      });
+      const result = await pool.query(query, [
+        customerId, 
+        'active', 
+        priority, 
+        timestamp, 
+        timestamp, 
+        customerName, 
+        customerPhone
+      ]);
+      
+      const row = result.rows[0];
+      
+      return {
+        id: row.id,
+        customerId: row.customer_id,
+        status: row.status,
+        priority: row.priority,
+        createdAt: row.created_at,
+        lastMessageAt: row.last_message_at,
+        assignedOperator: row.assigned_operator,
+        customerName: row.customer_name,
+        customerPhone: row.customer_phone
+      };
     } catch (error) {
-      console.error('Error in Conversation.create:', error);
+      console.error('Error creating conversation:', error);
       throw error;
     }
   },
 
-  /**
-   * Find conversation by ID
-   * @param {string} id - Conversation ID
-   * @returns {Promise<Object|null>} Conversation object or null if not found
-   */
   findById: async (id) => {
+    const query = 'SELECT * FROM conversations WHERE id = $1';
+    
     try {
-      const db = await getDatabase();
-
-      return new Promise((resolve, reject) => {
-        db.get(
-          'SELECT id, customer_id, status, priority, created_at, last_message_at, assigned_operator, customer_name, customer_phone FROM conversations WHERE id = ?',
-          [id],
-          (err, row) => {
-            if (err) {
-              console.error('Failed to find conversation by ID:', err.message);
-              reject(err);
-              return;
-            }
-
-            if (!row) {
-              resolve(null);
-              return;
-            }
-
-            const conversation = {
-              id: row.id,
-              customerId: row.customer_id,
-              status: row.status,
-              priority: row.priority,
-              createdAt: row.created_at,
-              lastMessageAt: row.last_message_at,
-              assignedOperator: row.assigned_operator || undefined,
-              customerName: row.customer_name || undefined,
-              customerPhone: row.customer_phone || undefined,
-            };
-
-            resolve(conversation);
-          }
-        );
-      });
+      const result = await pool.query(query, [id]);
+      
+      if (result.rows.length === 0) {
+        return null;
+      }
+      
+      const row = result.rows[0];
+      
+      return {
+        id: row.id,
+        customerId: row.customer_id,
+        status: row.status,
+        priority: row.priority,
+        createdAt: row.created_at,
+        lastMessageAt: row.last_message_at,
+        assignedOperator: row.assigned_operator,
+        customerName: row.customer_name,
+        customerPhone: row.customer_phone
+      };
     } catch (error) {
-      console.error('Error in Conversation.findById:', error);
+      console.error('Error finding conversation:', error);
       throw error;
     }
   },
 
-  /**
-   * Find all active conversations, ordered by last_message_at DESC
-   * @returns {Promise<Array>} Array of conversation objects
-   */
   findActive: async () => {
+    const query = `
+      SELECT * FROM conversations 
+      WHERE status = $1 
+      ORDER BY last_message_at DESC
+    `;
+    
     try {
-      const db = await getDatabase();
-
-      return new Promise((resolve, reject) => {
-        db.all(
-          'SELECT id, customer_id, status, priority, created_at, last_message_at, assigned_operator, customer_name, customer_phone FROM conversations WHERE status = ? ORDER BY last_message_at DESC',
-          ['active'],
-          (err, rows) => {
-            if (err) {
-              console.error('Failed to find active conversations:', err.message);
-              reject(err);
-              return;
-            }
-
-            const conversations = rows.map(row => ({
-              id: row.id,
-              customerId: row.customer_id,
-              status: row.status,
-              priority: row.priority,
-              createdAt: row.created_at,
-              lastMessageAt: row.last_message_at,
-              assignedOperator: row.assigned_operator || undefined,
-              customerName: row.customer_name || undefined,
-              customerPhone: row.customer_phone || undefined,
-            }));
-
-            resolve(conversations);
-          }
-        );
-      });
+      const result = await pool.query(query, ['active']);
+      
+      return result.rows.map(row => ({
+        id: row.id,
+        customerId: row.customer_id,
+        status: row.status,
+        priority: row.priority,
+        createdAt: row.created_at,
+        lastMessageAt: row.last_message_at,
+        assignedOperator: row.assigned_operator,
+        customerName: row.customer_name,
+        customerPhone: row.customer_phone
+      }));
     } catch (error) {
-      console.error('Error in Conversation.findActive:', error);
+      console.error('Error finding active conversations:', error);
       throw error;
     }
   },
 
-  /**
-   * Find all conversations (active, waiting, resolved),
-   * ordered by status (active, waiting, resolved) then last_message_at DESC
-   * @returns {Promise<Array>} Array of conversation objects
-   */
   findAllWithStatus: async () => {
+    const query = `
+      SELECT * FROM conversations
+      ORDER BY 
+        CASE status 
+          WHEN 'active' THEN 1 
+          WHEN 'waiting' THEN 2 
+          WHEN 'resolved' THEN 3 
+          ELSE 4
+        END,
+        last_message_at DESC
+    `;
+    
     try {
-      const db = await getDatabase();
-
-      return new Promise((resolve, reject) => {
-        db.all(
-          `SELECT id, customer_id, status, priority, created_at, last_message_at, assigned_operator, customer_name, customer_phone
-           FROM conversations
-           ORDER BY 
-             CASE status 
-               WHEN 'active' THEN 1 
-               WHEN 'waiting' THEN 2 
-               WHEN 'resolved' THEN 3 
-               ELSE 4
-             END,
-             last_message_at DESC`,
-          [],
-          (err, rows) => {
-            if (err) {
-              console.error('Failed to find all conversations with status:', err.message);
-              reject(err);
-              return;
-            }
-
-            const conversations = rows.map(row => ({
-              id: row.id,
-              customerId: row.customer_id,
-              status: row.status,
-              priority: row.priority,
-              createdAt: row.created_at,
-              lastMessageAt: row.last_message_at,
-              assignedOperator: row.assigned_operator || undefined,
-              customerName: row.customer_name || undefined,
-              customerPhone: row.customer_phone || undefined,
-            }));
-
-            resolve(conversations);
-          }
-        );
-      });
+      const result = await pool.query(query);
+      
+      return result.rows.map(row => ({
+        id: row.id,
+        customerId: row.customer_id,
+        status: row.status,
+        priority: row.priority,
+        createdAt: row.created_at,
+        lastMessageAt: row.last_message_at,
+        assignedOperator: row.assigned_operator,
+        customerName: row.customer_name,
+        customerPhone: row.customer_phone
+      }));
     } catch (error) {
-      console.error('Error in Conversation.findAllWithStatus:', error);
+      console.error('Error finding all conversations with status:', error);
       throw error;
     }
   },
 
-  /**
-   * Update conversation status
-   * @param {string} id - Conversation ID
-   * @param {string} status - New status ('active', 'resolved', 'waiting')
-   * @returns {Promise<Object>} Updated conversation object
-   */
   updateStatus: async (id, status) => {
+    const query = 'UPDATE conversations SET status = $1 WHERE id = $2 RETURNING *';
+    
     try {
-      const db = await getDatabase();
-
-      return new Promise((resolve, reject) => {
-        db.run(
-          'UPDATE conversations SET status = ? WHERE id = ?',
-          [status, id],
-          function(err) {
-            if (err) {
-              console.error('Failed to update conversation status:', err.message);
-              reject(err);
-              return;
-            }
-
-            if (this.changes === 0) {
-              reject(new Error('Conversation not found'));
-              return;
-            }
-
-            // Fetch the updated conversation
-            db.get(
-              'SELECT id, customer_id, status, priority, created_at, last_message_at, assigned_operator, customer_name, customer_phone FROM conversations WHERE id = ?',
-              [id],
-              (err, row) => {
-                if (err) {
-                  console.error('Failed to fetch updated conversation:', err.message);
-                  reject(err);
-                  return;
-                }
-
-                if (!row) {
-                  reject(new Error('Conversation not found after update'));
-                  return;
-                }
-
-                const conversation = {
-                  id: row.id,
-                  customerId: row.customer_id,
-                  status: row.status,
-                  priority: row.priority,
-                  createdAt: row.created_at,
-                  lastMessageAt: row.last_message_at,
-                  assignedOperator: row.assigned_operator || undefined,
-                  customerName: row.customer_name || undefined,
-                  customerPhone: row.customer_phone || undefined,
-                };
-
-                resolve(conversation);
-              }
-            );
-          }
-        );
-      });
+      const result = await pool.query(query, [status, id]);
+      
+      if (result.rows.length === 0) {
+        throw new Error('Conversation not found');
+      }
+      
+      const row = result.rows[0];
+      
+      return {
+        id: row.id,
+        customerId: row.customer_id,
+        status: row.status,
+        priority: row.priority,
+        createdAt: row.created_at,
+        lastMessageAt: row.last_message_at,
+        assignedOperator: row.assigned_operator,
+        customerName: row.customer_name,
+        customerPhone: row.customer_phone
+      };
     } catch (error) {
-      console.error('Error in Conversation.updateStatus:', error);
+      console.error('Error updating conversation status:', error);
       throw error;
     }
   },
 
-  /**
-   * Update conversation priority
-   * @param {string} id - Conversation ID
-   * @param {string} priority - New priority ('critical', 'high', 'normal')
-   * @returns {Promise<Object>} Updated conversation object
-   */
   updatePriority: async (id, priority) => {
+    const query = 'UPDATE conversations SET priority = $1 WHERE id = $2 RETURNING *';
+    
     try {
-      const db = await getDatabase();
-
-      return new Promise((resolve, reject) => {
-        db.run(
-          'UPDATE conversations SET priority = ? WHERE id = ?',
-          [priority, id],
-          function(err) {
-            if (err) {
-              console.error('Failed to update conversation priority:', err.message);
-              reject(err);
-              return;
-            }
-
-            if (this.changes === 0) {
-              reject(new Error('Conversation not found'));
-              return;
-            }
-
-            // Fetch the updated conversation
-            db.get(
-              'SELECT id, customer_id, status, priority, created_at, last_message_at, assigned_operator, customer_name, customer_phone FROM conversations WHERE id = ?',
-              [id],
-              (err, row) => {
-                if (err) {
-                  console.error('Failed to fetch updated conversation:', err.message);
-                  reject(err);
-                  return;
-                }
-
-                if (!row) {
-                  reject(new Error('Conversation not found after update'));
-                  return;
-                }
-
-                const conversation = {
-                  id: row.id,
-                  customerId: row.customer_id,
-                  status: row.status,
-                  priority: row.priority,
-                  createdAt: row.created_at,
-                  lastMessageAt: row.last_message_at,
-                  assignedOperator: row.assigned_operator || undefined,
-                  customerName: row.customer_name || undefined,
-                  customerPhone: row.customer_phone || undefined,
-                };
-
-                resolve(conversation);
-              }
-            );
-          }
-        );
-      });
+      const result = await pool.query(query, [priority, id]);
+      
+      if (result.rows.length === 0) {
+        throw new Error('Conversation not found');
+      }
+      
+      const row = result.rows[0];
+      
+      return {
+        id: row.id,
+        customerId: row.customer_id,
+        status: row.status,
+        priority: row.priority,
+        createdAt: row.created_at,
+        lastMessageAt: row.last_message_at,
+        assignedOperator: row.assigned_operator,
+        customerName: row.customer_name,
+        customerPhone: row.customer_phone
+      };
     } catch (error) {
-      console.error('Error in Conversation.updatePriority:', error);
+      console.error('Error updating conversation priority:', error);
       throw error;
     }
   },
 
-  /**
-   * Update last message timestamp
-   * @param {string} id - Conversation ID
-   * @returns {Promise<Object>} Updated conversation object
-   */
   updateLastMessageTime: async (id) => {
+    const timestamp = Date.now();
+    const query = 'UPDATE conversations SET last_message_at = $1 WHERE id = $2 RETURNING *';
+    
     try {
-      const db = await getDatabase();
-      const timestamp = Date.now();
-
-      return new Promise((resolve, reject) => {
-        db.run(
-          'UPDATE conversations SET last_message_at = ? WHERE id = ?',
-          [timestamp, id],
-          function(err) {
-            if (err) {
-              console.error('Failed to update last message time:', err.message);
-              reject(err);
-              return;
-            }
-
-            if (this.changes === 0) {
-              reject(new Error('Conversation not found'));
-              return;
-            }
-
-            // Fetch the updated conversation
-            db.get(
-              'SELECT id, customer_id, status, priority, created_at, last_message_at, assigned_operator, customer_name, customer_phone FROM conversations WHERE id = ?',
-              [id],
-              (err, row) => {
-                if (err) {
-                  console.error('Failed to fetch updated conversation:', err.message);
-                  reject(err);
-                  return;
-                }
-
-                if (!row) {
-                  reject(new Error('Conversation not found after update'));
-                  return;
-                }
-
-                const conversation = {
-                  id: row.id,
-                  customerId: row.customer_id,
-                  status: row.status,
-                  priority: row.priority,
-                  createdAt: row.created_at,
-                  lastMessageAt: row.last_message_at,
-                  assignedOperator: row.assigned_operator || undefined,
-                  customerName: row.customer_name || undefined,
-                  customerPhone: row.customer_phone || undefined,
-                };
-
-                resolve(conversation);
-              }
-            );
-          }
-        );
-      });
+      const result = await pool.query(query, [timestamp, id]);
+      
+      if (result.rows.length === 0) {
+        throw new Error('Conversation not found');
+      }
+      
+      const row = result.rows[0];
+      
+      return {
+        id: row.id,
+        customerId: row.customer_id,
+        status: row.status,
+        priority: row.priority,
+        createdAt: row.created_at,
+        lastMessageAt: row.last_message_at,
+        assignedOperator: row.assigned_operator,
+        customerName: row.customer_name,
+        customerPhone: row.customer_phone
+      };
     } catch (error) {
-      console.error('Error in Conversation.updateLastMessageTime:', error);
+      console.error('Error updating last message time:', error);
       throw error;
     }
   },
 
-  /**
-   * Update customer information for a conversation
-   * @param {string} id - Conversation ID
-   * @param {string} customerName - Customer name
-   * @param {string} customerPhone - Customer phone
-   * @returns {Promise<Object>} Updated conversation object
-   */
   updateCustomerInfo: async (id, customerName, customerPhone) => {
+    const query = 'UPDATE conversations SET customer_name = $1, customer_phone = $2 WHERE id = $3 RETURNING *';
+    
     try {
-      const db = await getDatabase();
-
-      return new Promise((resolve, reject) => {
-        db.run(
-          'UPDATE conversations SET customer_name = ?, customer_phone = ? WHERE id = ?',
-          [customerName, customerPhone, id],
-          function(err) {
-            if (err) {
-              console.error('Failed to update customer info:', err.message);
-              reject(err);
-              return;
-            }
-
-            if (this.changes === 0) {
-              reject(new Error('Conversation not found'));
-              return;
-            }
-
-            console.log(`✅ Updated customer info for conversation ${id}`);
-            resolve({
-              id,
-              customerName,
-              customerPhone,
-            });
-          }
-        );
-      });
+      const result = await pool.query(query, [customerName, customerPhone, id]);
+      
+      if (result.rows.length === 0) {
+        throw new Error('Conversation not found');
+      }
+      
+      console.log(`✅ Updated customer info for conversation ${id}`);
+      return {
+        id: result.rows[0].id,
+        customerName,
+        customerPhone
+      };
     } catch (error) {
-      console.error('Error in Conversation.updateCustomerInfo:', error);
+      console.error('Error updating customer info:', error);
       throw error;
     }
   },
 
-  /**
-   * Expire conversations older than 24 hours (based on last_message_at)
-   * @param {number} hoursOld - Hours threshold (default: 24)
-   * @returns {Promise<number>} Number of conversations expired
-   */
   expireOldConversations: async (hoursOld = 24) => {
+    const millisecondsOld = hoursOld * 60 * 60 * 1000;
+    const cutoffTime = Date.now() - millisecondsOld;
+    
     try {
-      const db = await getDatabase();
-      const millisecondsOld = hoursOld * 60 * 60 * 1000;
-      const cutoffTime = Date.now() - millisecondsOld;
-
-      return new Promise((resolve, reject) => {
-        // Find conversations that are active and older than threshold
-        db.all(
-          'SELECT id FROM conversations WHERE status = ? AND last_message_at < ?',
-          ['active', cutoffTime],
-          (err, rows) => {
-            if (err) {
-              console.error('Failed to find old conversations:', err.message);
-              reject(err);
-              return;
-            }
-
-            if (rows.length === 0) {
-              resolve(0);
-              return;
-            }
-
-            // Update all found conversations to resolved status
-            const ids = rows.map(row => row.id);
-            const placeholders = ids.map(() => '?').join(',');
-            
-            db.run(
-              `UPDATE conversations SET status = 'resolved' WHERE id IN (${placeholders})`,
-              ids,
-              function(updateErr) {
-                if (updateErr) {
-                  console.error('Failed to expire conversations:', updateErr.message);
-                  reject(updateErr);
-                  return;
-                }
-
-                console.log(`⏰ Expired ${this.changes} conversation(s) older than ${hoursOld} hours`);
-                resolve(this.changes);
-              }
-            );
-          }
-        );
-      });
+      // Find conversations that are active and older than threshold
+      const findQuery = 'SELECT id FROM conversations WHERE status = $1 AND last_message_at < $2';
+      const findResult = await pool.query(findQuery, ['active', cutoffTime]);
+      
+      if (findResult.rows.length === 0) {
+        return 0;
+      }
+      
+      // Update all found conversations to resolved status
+      const ids = findResult.rows.map(row => row.id);
+      const placeholders = ids.map((_, index) => `$${index + 1}`).join(',');
+      const updateQuery = `UPDATE conversations SET status = 'resolved' WHERE id IN (${placeholders})`;
+      
+      const updateResult = await pool.query(updateQuery, ids);
+      
+      console.log(`⏰ Expired ${updateResult.rowCount} conversation(s) older than ${hoursOld} hours`);
+      return updateResult.rowCount;
     } catch (error) {
       console.error('Error in Conversation.expireOldConversations:', error);
       throw error;
