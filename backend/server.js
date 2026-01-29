@@ -178,7 +178,7 @@ const io = new Server(server, {
     credentials: true, // Required for cookies/auth if used
     allowedHeaders: ['Content-Type', 'Authorization']
   },
-  transports: ['websocket', 'polling'], // Try websocket first, fallback to polling
+  transports: ['polling', 'websocket'], // Try polling first (more reliable), then websocket
   allowEIO3: true, // Compatibility
   path: '/socket.io/', // Default path (explicit for clarity)
   pingTimeout: 60000,

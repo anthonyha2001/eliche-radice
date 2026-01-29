@@ -14,18 +14,18 @@ export function getSocket(): Socket {
   if (!socket) {
     console.log('🔌 Creating new Socket.io connection to:', SOCKET_URL);
     
+    // Use polling only to avoid websocket issues (can enable websocket later if needed)
     socket = io(SOCKET_URL, {
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
       reconnectionAttempts: 5,
-      transports: ['polling', 'websocket'], // Try polling first (more reliable), then websocket
+      transports: ['polling'], // Use polling only for now (more reliable)
       autoConnect: true,
       withCredentials: true,
       forceNew: false,
       timeout: 20000, // 20 second connection timeout
-      upgrade: true, // Allow transport upgrade
-      rememberUpgrade: false, // Don't remember failed upgrades
+      upgrade: false, // Disable transport upgrade (stay on polling)
     });
     
     socket.on('connect', () => {
@@ -48,21 +48,16 @@ export function getSocket(): Socket {
         message: error.message,
         description: error.toString(),
         type: error.type,
-        transport: socket?.io?.engine?.transport?.name || 'unknown'
+        transport: socket?.io?.engine?.transport?.name || 'unknown',
+        url: SOCKET_URL
       });
-      
-      // If websocket fails, try forcing polling
-      if (error.message.includes('websocket') && socket?.io?.engine?.transport?.name === 'websocket') {
-        console.log('🔄 WebSocket failed, attempting to upgrade to polling...');
-        socket.io.opts.transports = ['polling'];
-        socket.io.opts.upgrade = false; // Disable upgrade attempts
-      }
       
       console.log('🔍 Troubleshooting:');
       console.log('   1. Is backend running? Check', `${SOCKET_URL}/health`);
-      console.log('   2. Check NEXT_PUBLIC_SOCKET_URL is set correctly');
+      console.log('   2. Check NEXT_PUBLIC_SOCKET_URL is set correctly (current:', SOCKET_URL, ')');
       console.log('   3. Check backend CORS allows your origin');
       console.log('   4. Current transport:', socket?.io?.engine?.transport?.name || 'unknown');
+      console.log('   5. Try opening', `${SOCKET_URL}/health`, 'in browser to verify backend is accessible');
     });
     
     socket.on('reconnect_attempt', (attemptNumber) => {
