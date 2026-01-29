@@ -143,10 +143,43 @@ app.use((err, req, res, next) => {
 const server = http.createServer(app);
 
 // Initialize Socket.io with CORS configuration - MUST MATCH Express CORS
-// Use array of origins directly (more reliable than function)
+// Use function to allow Vercel preview deployments and localhost
 const io = new Server(server, {
   cors: {
-    origin: allowedOrigins, // Use array directly - Socket.IO handles normalization
+    origin: (origin, callback) => {
+      // Allow no origin (server-to-server, mobile apps)
+      if (!origin) {
+        return callback(null, true);
+      }
+      
+      // Normalize origin
+      const normalizedOrigin = origin.replace(/\/$/, '');
+      
+      // Check exact match from allowedOrigins
+      const isExactMatch = allowedOrigins.some(allowed => {
+        const normalizedAllowed = allowed.replace(/\/$/, '');
+        return normalizedOrigin === normalizedAllowed;
+      });
+      
+      if (isExactMatch) {
+        return callback(null, true);
+      }
+      
+      // Allow all Vercel preview deployments
+      if (normalizedOrigin.includes('.vercel.app')) {
+        console.log('✅ Socket.io CORS - Allowing Vercel domain:', origin);
+        return callback(null, true);
+      }
+      
+      // Allow localhost on any port
+      if (normalizedOrigin.match(/^https?:\/\/localhost(:\d+)?$/)) {
+        console.log('✅ Socket.io CORS - Allowing localhost:', origin);
+        return callback(null, true);
+      }
+      
+      console.log('❌ Socket.io CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    },
     methods: ['GET', 'POST'],
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization']
