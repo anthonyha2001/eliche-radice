@@ -79,7 +79,15 @@ export default function ConversationList({ conversations, selectedId, onSelect }
                 <p className="text-xs text-gray-500">{conv.customerPhone}</p>
               )}
               <p className="text-xs text-gray-500">
-                {new Date(conv.lastMessageAt).toLocaleString()}
+                {conv.lastMessageAt 
+                  ? new Date(Number(conv.lastMessageAt)).toLocaleString([], {
+                      month: 'short',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })
+                  : 'No messages'
+                }
               </p>
             </div>
             <PriorityBadge priority={conv.priority} />
