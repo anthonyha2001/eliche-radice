@@ -1,7 +1,9 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+interface ButtonProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'as'> {
   variant?: 'primary' | 'secondary' | 'ghost' | 'outline';
   size?: 'sm' | 'md' | 'lg';
   children: React.ReactNode;
@@ -35,13 +37,23 @@ export default function Button({
   
   const classes = `${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${className}`;
   
-  // When asChild + href are provided, render a styled Link
-  if (asChild && href) {
-    return (
-      <Link href={href} className={classes}>
-        {children}
-      </Link>
-    );
+  // When asChild is true, clone the child element and add button styles
+  if (asChild) {
+    // If href is provided, use Next.js Link
+    if (href) {
+      return (
+        <Link href={href} className={classes}>
+          {children}
+        </Link>
+      );
+    }
+    
+    // Otherwise, clone the child (should be an <a> tag) and add classes
+    if (React.isValidElement(children)) {
+      return React.cloneElement(children as React.ReactElement<any>, {
+        className: `${classes} ${(children as React.ReactElement<any>).props?.className || ''}`,
+      });
+    }
   }
   
   return (
