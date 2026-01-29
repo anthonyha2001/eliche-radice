@@ -9,40 +9,63 @@ const { ensureSchema } = require('./db/init');
 
 // Load environment variables
 const PORT = process.env.PORT || 3001;
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
 const NODE_ENV = process.env.NODE_ENV || 'development';
+
+// CORS origins from environment variable (comma-separated)
+// Example: CORS_ORIGINS=https://eliche-radice.vercel.app,https://*.vercel.app,http://localhost:3000
+const corsOriginsEnv = process.env.CORS_ORIGINS || 'http://localhost:3000';
+const allowedOrigins = corsOriginsEnv
+  .split(',')
+  .map(origin => origin.trim())
+  .filter(Boolean);
 
 // Create Express app
 const app = express();
 
-// Configure CORS for frontend - CRITICAL FOR SOCKET.IO
-// Allow multiple origins for production (Vercel + local dev)
-const allowedOrigins = [
-  FRONTEND_URL,
-  'https://eliche-radice.vercel.app',
-  'https://eliche-radice.vercel.app/',
-  'http://localhost:3000',
-  'http://localhost:3001',
-].filter(Boolean); // Remove any undefined/null values
-
+// Configure CORS - only allow valid origins from allowlist
 const corsOptions = {
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
+    // Allow requests with no origin (like mobile apps, Postman, curl)
+    if (!origin) {
+      return callback(null, true);
+    }
     
-    // Check if origin is in allowed list
-    if (allowedOrigins.some(allowed => origin === allowed || origin.startsWith(allowed.replace(/\/$/, '')))) {
+    // Normalize origin (remove trailing slash)
+    const normalizedOrigin = origin.replace(/\/$/, '');
+    
+    // Check exact match or wildcard pattern (e.g., https://*.vercel.app)
+    const isAllowed = allowedOrigins.some(allowed => {
+      const normalizedAllowed = allowed.replace(/\/$/, '');
+      
+      // Exact match
+      if (normalizedOrigin === normalizedAllowed) {
+        return true;
+      }
+      
+      // Wildcard pattern match (e.g., https://*.vercel.app)
+      if (normalizedAllowed.includes('*')) {
+        const pattern = normalizedAllowed.replace(/\*/g, '.*');
+        const regex = new RegExp(`^${pattern}$`);
+        return regex.test(normalizedOrigin);
+      }
+      
+      return false;
+    });
+    
+    if (isAllowed) {
       callback(null, true);
     } else {
       console.warn('⚠️ CORS blocked origin:', origin);
-      callback(new Error('Not allowed by CORS'));
+      callback(new Error(`Origin ${origin} not allowed by CORS`));
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  optionsSuccessStatus: 200 // Some legacy browsers (IE11) choke on 204
 };
 
+// Apply CORS middleware BEFORE routes
 app.use(cors(corsOptions));
 app.use(express.json());
 
@@ -106,7 +129,23 @@ const server = http.createServer(app);
 // Initialize Socket.io with CORS configuration - MUST MATCH CORS
 const io = new Server(server, {
   cors: {
-    origin: allowedOrigins,
+    origin: (origin, callback) => {
+      // Same logic as Express CORS
+      if (!origin) {
+        return callback(null, true);
+      }
+      const normalizedOrigin = origin.replace(/\/$/, '');
+      const isAllowed = allowedOrigins.some(allowed => {
+        const normalizedAllowed = allowed.replace(/\/$/, '');
+        if (normalizedOrigin === normalizedAllowed) return true;
+        if (normalizedAllowed.includes('*')) {
+          const pattern = normalizedAllowed.replace(/\*/g, '.*');
+          return new RegExp(`^${pattern}$`).test(normalizedOrigin);
+        }
+        return false;
+      });
+      callback(isAllowed ? null : new Error('Not allowed'), isAllowed);
+    },
     methods: ['GET', 'POST'],
     credentials: true
   },
@@ -117,7 +156,7 @@ const io = new Server(server, {
 // Make io available to routes
 app.set('io', io);
 
-console.log('🔌 Socket.io configured for:', FRONTEND_URL);
+console.log('🔌 Socket.io configured for origins:', allowedOrigins);
 console.log('✅ Socket.io instance attached to app');
 
 // Socket.io error handling
@@ -320,12 +359,13 @@ io.on('connection', (socket) => {
 
 // Start server
 server.listen(PORT, async () => {
-  console.log(`Server running on port ${PORT}`);
-  console.log(`Environment: ${NODE_ENV}`);
-  console.log(`Frontend URL: ${FRONTEND_URL}`);
+  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`📦 Environment: ${NODE_ENV}`);
+  console.log(`🌐 CORS origins: ${allowedOrigins.join(', ')}`);
 
   try {
     // Ensure PostgreSQL schema exists before background jobs
+    // This will retry on connection errors (DB may start after app)
     await ensureSchema();
     console.log('✅ Database schema verified, starting background jobs...');
     
@@ -333,9 +373,10 @@ server.listen(PORT, async () => {
     startConversationExpirationJob();
   } catch (error) {
     console.error('❌ CRITICAL: Failed to initialize database schema');
-    console.error('   Server will continue but database operations may fail');
     console.error('   Error:', error.message);
-    // Don't crash the server, but log clearly
+    console.error('   Exiting with code 1 to trigger Railway restart...');
+    // Exit with non-zero to trigger Railway restart
+    process.exit(1);
   }
 });
 
