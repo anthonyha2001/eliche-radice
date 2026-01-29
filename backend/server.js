@@ -424,7 +424,7 @@ io.on('connection', (socket) => {
 server.listen(PORT, async () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📦 Environment: ${NODE_ENV}`);
-  console.log(`🌐 CORS origins: ${allowedOrigins.join(', ')}`);
+  console.log(`🌐 CORS origins: ${allowedOriginsForLog.join(', ')}`);
   console.log(`🔌 Socket.IO path: /socket.io/`);
   console.log(`🔌 Socket.IO transports: websocket, polling`);
   console.log(`✅ HTTP server listening on port ${PORT}`);
