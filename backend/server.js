@@ -14,19 +14,17 @@ const NODE_ENV = process.env.NODE_ENV || 'development';
 // Create Express app
 const app = express();
 
-// Configure CORS - get allowed origins from FRONTEND_URL environment variable
-const corsOptions = {
+// Parse allowed origins from environment variable
+const allowedOriginsString = process.env.FRONTEND_URL || 'http://localhost:3000';
+const allowedOrigins = allowedOriginsString.split(',').map(url => url.trim()).filter(Boolean);
+
+console.log('🔧 CORS configured for origins:', allowedOrigins);
+
+// Express CORS - MUST be before routes
+app.use(cors({
   origin: function (origin, callback) {
-    // Get allowed origins from environment variable
-    const allowedOriginsString = process.env.FRONTEND_URL || 'http://localhost:3000';
-    const allowedOrigins = allowedOriginsString.split(',').map(url => url.trim()).filter(Boolean);
-    
-    console.log('🔍 CORS Check - Request origin:', origin);
-    console.log('🔍 CORS Check - Allowed origins:', allowedOrigins);
-    
-    // Allow requests with no origin (mobile apps, Postman, curl)
+    // Allow requests with no origin (mobile apps, Postman, server-to-server)
     if (!origin) {
-      console.log('✅ CORS - No origin (server-to-server), allowing');
       return callback(null, true);
     }
     
@@ -40,33 +38,53 @@ const corsOptions = {
     });
     
     if (isAllowed) {
-      console.log('✅ CORS - Origin allowed:', origin);
       callback(null, true);
     } else {
-      console.log('❌ CORS - Origin blocked:', origin);
-      console.log('   Allowed origins:', allowedOrigins);
-      callback(new Error(`Origin ${origin} not allowed by CORS`));
+      console.log('❌ CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  optionsSuccessStatus: 200 // Some legacy browsers (IE11) choke on 204
-};
+  optionsSuccessStatus: 200
+}));
 
-// Apply CORS middleware BEFORE routes
-app.use(cors(corsOptions));
+// Body parser
 app.use(express.json());
 
-// Get allowed origins from FRONTEND_URL (used for logging)
-const allowedOriginsString = process.env.FRONTEND_URL || 'http://localhost:3000';
-const allowedOriginsForLog = allowedOriginsString.split(',').map(url => url.trim()).filter(Boolean);
-console.log('🔧 CORS configured for origins:', allowedOriginsForLog);
+// Explicit CORS headers for all responses (backup)
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  
+  if (origin) {
+    const normalizedOrigin = origin.replace(/\/$/, '');
+    const isAllowed = allowedOrigins.some(allowed => {
+      const normalizedAllowed = allowed.replace(/\/$/, '');
+      return normalizedOrigin === normalizedAllowed;
+    });
+    
+    if (isAllowed) {
+      res.header('Access-Control-Allow-Origin', origin);
+      res.header('Access-Control-Allow-Credentials', 'true');
+      res.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
+      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    }
+  }
+  
+  // Handle preflight
+  if (req.method === 'OPTIONS') {
+    return res.sendStatus(200);
+  }
+  
+  next();
+});
 
 // Health check endpoint (defined before Socket.IO, so no io reference)
 app.get('/health', (req, res) => {
   res.status(200).json({ 
     status: 'ok',
+    cors: allowedOrigins,
     timestamp: new Date().toISOString(),
     uptime: Math.floor(process.uptime())
   });
@@ -125,42 +143,12 @@ app.use((err, req, res, next) => {
 const server = http.createServer(app);
 
 // Initialize Socket.io with CORS configuration - MUST MATCH Express CORS
+// Use array of origins directly (more reliable than function)
 const io = new Server(server, {
   cors: {
-    origin: function (origin, callback) {
-      // Get allowed origins from environment variable (same as Express CORS)
-      const allowedOriginsString = process.env.FRONTEND_URL || 'http://localhost:3000';
-      const allowedOrigins = allowedOriginsString.split(',').map(url => url.trim()).filter(Boolean);
-      
-      console.log('🔍 Socket CORS Check - Request origin:', origin);
-      console.log('🔍 Socket CORS Check - Allowed origins:', allowedOrigins);
-      
-      // Allow requests with no origin (mobile apps, Postman, curl)
-      if (!origin) {
-        console.log('✅ Socket CORS - No origin (server-to-server), allowing');
-        return callback(null, true);
-      }
-      
-      // Normalize origin (remove trailing slash)
-      const normalizedOrigin = origin.replace(/\/$/, '');
-      
-      // Check if origin is in allowed list (exact match)
-      const isAllowed = allowedOrigins.some(allowed => {
-        const normalizedAllowed = allowed.replace(/\/$/, '');
-        return normalizedOrigin === normalizedAllowed;
-      });
-      
-      if (isAllowed) {
-        console.log('✅ Socket CORS - Origin allowed:', origin);
-        callback(null, true);
-      } else {
-        console.log('❌ Socket CORS - Origin blocked:', origin);
-        console.log('   Allowed origins:', allowedOrigins);
-        callback(new Error(`Origin ${origin} not allowed by Socket.IO CORS`), false);
-      }
-    },
-    credentials: true,
+    origin: allowedOrigins, // Use array directly - Socket.IO handles normalization
     methods: ['GET', 'POST'],
+    credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization']
   },
   transports: ['polling', 'websocket'], // Try polling first (more reliable), then websocket
@@ -174,9 +162,11 @@ const io = new Server(server, {
 app.set('io', io);
 
 // Update health endpoint to include Socket.IO stats (now that io is defined)
+// Note: This overrides the earlier /health endpoint definition
 app.get('/health', (req, res) => {
   res.status(200).json({ 
     status: 'ok',
+    cors: allowedOrigins,
     timestamp: new Date().toISOString(),
     uptime: Math.floor(process.uptime()),
     socketIo: {
@@ -186,7 +176,7 @@ app.get('/health', (req, res) => {
   });
 });
 
-console.log('🔌 Socket.io configured for origins:', allowedOriginsForLog);
+console.log('🔌 Socket.io configured for origins:', allowedOrigins);
 console.log('✅ Socket.io instance attached to HTTP server');
 console.log('✅ Socket.io will handle WebSocket upgrades on /socket.io/');
 
@@ -424,7 +414,7 @@ io.on('connection', (socket) => {
 server.listen(PORT, async () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📦 Environment: ${NODE_ENV}`);
-  console.log(`🌐 CORS origins: ${allowedOriginsForLog.join(', ')}`);
+  console.log(`🌐 CORS origins: ${allowedOrigins.join(', ')}`);
   console.log(`🔌 Socket.IO path: /socket.io/`);
   console.log(`🔌 Socket.IO transports: websocket, polling`);
   console.log(`✅ HTTP server listening on port ${PORT}`);
