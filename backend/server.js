@@ -11,51 +11,40 @@ const { ensureSchema } = require('./db/init');
 const PORT = process.env.PORT || 3001;
 const NODE_ENV = process.env.NODE_ENV || 'development';
 
-// CORS origins from environment variable (comma-separated)
-// Example: CORS_ORIGINS=https://eliche-radice.vercel.app,https://*.vercel.app,http://localhost:3000
-const corsOriginsEnv = process.env.CORS_ORIGINS || 'http://localhost:3000';
-const allowedOrigins = corsOriginsEnv
-  .split(',')
-  .map(origin => origin.trim())
-  .filter(Boolean);
-
 // Create Express app
 const app = express();
 
-// Configure CORS - only allow valid origins from allowlist
+// Configure CORS - get allowed origins from FRONTEND_URL environment variable
 const corsOptions = {
   origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps, Postman, curl)
+    // Get allowed origins from environment variable
+    const allowedOriginsString = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const allowedOrigins = allowedOriginsString.split(',').map(url => url.trim()).filter(Boolean);
+    
+    console.log('🔍 CORS Check - Request origin:', origin);
+    console.log('🔍 CORS Check - Allowed origins:', allowedOrigins);
+    
+    // Allow requests with no origin (mobile apps, Postman, curl)
     if (!origin) {
+      console.log('✅ CORS - No origin (server-to-server), allowing');
       return callback(null, true);
     }
     
     // Normalize origin (remove trailing slash)
     const normalizedOrigin = origin.replace(/\/$/, '');
     
-    // Check exact match or wildcard pattern (e.g., https://*.vercel.app)
+    // Check if origin is in allowed list (exact match)
     const isAllowed = allowedOrigins.some(allowed => {
       const normalizedAllowed = allowed.replace(/\/$/, '');
-      
-      // Exact match
-      if (normalizedOrigin === normalizedAllowed) {
-        return true;
-      }
-      
-      // Wildcard pattern match (e.g., https://*.vercel.app)
-      if (normalizedAllowed.includes('*')) {
-        const pattern = normalizedAllowed.replace(/\*/g, '.*');
-        const regex = new RegExp(`^${pattern}$`);
-        return regex.test(normalizedOrigin);
-      }
-      
-      return false;
+      return normalizedOrigin === normalizedAllowed;
     });
     
     if (isAllowed) {
+      console.log('✅ CORS - Origin allowed:', origin);
       callback(null, true);
     } else {
-      console.warn('⚠️ CORS blocked origin:', origin);
+      console.log('❌ CORS - Origin blocked:', origin);
+      console.log('   Allowed origins:', allowedOrigins);
       callback(new Error(`Origin ${origin} not allowed by CORS`));
     }
   },
@@ -69,7 +58,10 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
-console.log('🔧 CORS configured for origins:', allowedOrigins);
+// Get allowed origins from FRONTEND_URL (used for logging)
+const allowedOriginsString = process.env.FRONTEND_URL || 'http://localhost:3000';
+const allowedOriginsForLog = allowedOriginsString.split(',').map(url => url.trim()).filter(Boolean);
+console.log('🔧 CORS configured for origins:', allowedOriginsForLog);
 
 // Health check endpoint (defined before Socket.IO, so no io reference)
 app.get('/health', (req, res) => {
@@ -132,50 +124,43 @@ app.use((err, req, res, next) => {
 // Socket.IO will handle WebSocket upgrades automatically
 const server = http.createServer(app);
 
-// Helper function to check if origin is allowed (same as Express CORS)
-function isOriginAllowed(origin) {
-  if (!origin) return true; // Allow no origin (like mobile apps)
-  
-  const normalizedOrigin = origin.replace(/\/$/, '');
-  
-  return allowedOrigins.some(allowed => {
-    const normalizedAllowed = allowed.replace(/\/$/, '');
-    
-    // Exact match
-    if (normalizedOrigin === normalizedAllowed) {
-      return true;
-    }
-    
-    // Wildcard pattern match (e.g., https://*.vercel.app)
-    if (normalizedAllowed.includes('*')) {
-      const pattern = normalizedAllowed.replace(/\*/g, '.*');
-      const regex = new RegExp(`^${pattern}$`);
-      return regex.test(normalizedOrigin);
-    }
-    
-    return false;
-  });
-}
-
 // Initialize Socket.io with CORS configuration - MUST MATCH Express CORS
-// Use array of origins for Socket.IO (more reliable than callback)
-const socketIoOrigins = allowedOrigins.filter(origin => !origin.includes('*')); // Socket.IO doesn't support wildcards in array
-
 const io = new Server(server, {
   cors: {
-    origin: (origin, callback) => {
-      const allowed = isOriginAllowed(origin);
-      if (allowed) {
-        console.log(`✅ Socket.IO CORS allowed origin: ${origin}`);
+    origin: function (origin, callback) {
+      // Get allowed origins from environment variable (same as Express CORS)
+      const allowedOriginsString = process.env.FRONTEND_URL || 'http://localhost:3000';
+      const allowedOrigins = allowedOriginsString.split(',').map(url => url.trim()).filter(Boolean);
+      
+      console.log('🔍 Socket CORS Check - Request origin:', origin);
+      console.log('🔍 Socket CORS Check - Allowed origins:', allowedOrigins);
+      
+      // Allow requests with no origin (mobile apps, Postman, curl)
+      if (!origin) {
+        console.log('✅ Socket CORS - No origin (server-to-server), allowing');
+        return callback(null, true);
+      }
+      
+      // Normalize origin (remove trailing slash)
+      const normalizedOrigin = origin.replace(/\/$/, '');
+      
+      // Check if origin is in allowed list (exact match)
+      const isAllowed = allowedOrigins.some(allowed => {
+        const normalizedAllowed = allowed.replace(/\/$/, '');
+        return normalizedOrigin === normalizedAllowed;
+      });
+      
+      if (isAllowed) {
+        console.log('✅ Socket CORS - Origin allowed:', origin);
         callback(null, true);
       } else {
-        console.warn(`⚠️ Socket.IO CORS blocked origin: ${origin}`);
-        console.warn(`   Allowed origins: ${allowedOrigins.join(', ')}`);
-        callback(new Error(`Origin ${origin} not allowed`), false);
+        console.log('❌ Socket CORS - Origin blocked:', origin);
+        console.log('   Allowed origins:', allowedOrigins);
+        callback(new Error(`Origin ${origin} not allowed by Socket.IO CORS`), false);
       }
     },
+    credentials: true,
     methods: ['GET', 'POST'],
-    credentials: true, // Required for cookies/auth if used
     allowedHeaders: ['Content-Type', 'Authorization']
   },
   transports: ['polling', 'websocket'], // Try polling first (more reliable), then websocket
@@ -201,7 +186,7 @@ app.get('/health', (req, res) => {
   });
 });
 
-console.log('🔌 Socket.io configured for origins:', allowedOrigins);
+console.log('🔌 Socket.io configured for origins:', allowedOriginsForLog);
 console.log('✅ Socket.io instance attached to HTTP server');
 console.log('✅ Socket.io will handle WebSocket upgrades on /socket.io/');
 
