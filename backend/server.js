@@ -5,6 +5,7 @@ const { Server } = require('socket.io');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
+const { ensureSchema } = require('./db/init');
 
 // Load environment variables
 const PORT = process.env.PORT || 3001;
@@ -298,10 +299,13 @@ io.on('connection', (socket) => {
 });
 
 // Start server
-server.listen(PORT, () => {
+server.listen(PORT, async () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Environment: ${NODE_ENV}`);
   console.log(`Frontend URL: ${FRONTEND_URL}`);
+
+  // Ensure PostgreSQL schema exists before background jobs
+  await ensureSchema();
   
   // Start conversation expiration job
   startConversationExpirationJob();
