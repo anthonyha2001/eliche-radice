@@ -43,11 +43,11 @@ export function getSocket(): Socket {
       }
     });
     
-    socket.on('connect_error', (error) => {
+    socket.on('connect_error', (error: Error & { type?: string; description?: string }) => {
       console.error('❌ Socket connection error:', {
         message: error.message,
-        description: error.toString(),
-        type: error.type,
+        description: error.description || error.toString(),
+        type: error.type || 'unknown',
         transport: socket?.io?.engine?.transport?.name || 'unknown',
         url: SOCKET_URL
       });
