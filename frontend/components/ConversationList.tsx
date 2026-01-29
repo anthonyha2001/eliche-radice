@@ -1,6 +1,7 @@
 'use client';
 
 import PriorityBadge from './PriorityBadge';
+import { formatConversationTime } from '@/lib/formatTime';
 
 interface Conversation {
   id: string;
@@ -79,15 +80,7 @@ export default function ConversationList({ conversations, selectedId, onSelect }
                 <p className="text-xs text-gray-500">{conv.customerPhone}</p>
               )}
               <p className="text-xs text-gray-500">
-                {conv.lastMessageAt 
-                  ? new Date(Number(conv.lastMessageAt)).toLocaleString([], {
-                      month: 'short',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })
-                  : 'No messages'
-                }
+                {formatConversationTime(conv.lastMessageAt)}
               </p>
             </div>
             <PriorityBadge priority={conv.priority} />

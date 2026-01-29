@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { formatMessageTime } from '@/lib/formatTime';
 
 interface Message {
   id: string;
@@ -53,13 +54,7 @@ export default function MessageList({ messages, currentUser }: MessageListProps)
               <div className="flex items-center justify-between mt-1 space-x-2">
                 <div className="flex items-center space-x-2">
                   <p className={`text-xs ${isOwnMessage ? 'text-gray-300' : 'text-gray-500'}`}>
-                    {message.timestamp 
-                      ? new Date(Number(message.timestamp)).toLocaleTimeString([], { 
-                          hour: '2-digit', 
-                          minute: '2-digit' 
-                        })
-                      : 'Just now'
-                    }
+                    {formatMessageTime(message.timestamp) || 'Just now'}
                   </p>
                   {/* AI Badge */}
                   {message.isAI && (
