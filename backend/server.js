@@ -16,8 +16,28 @@ const NODE_ENV = process.env.NODE_ENV || 'development';
 const app = express();
 
 // Configure CORS for frontend - CRITICAL FOR SOCKET.IO
+// Allow multiple origins for production (Vercel + local dev)
+const allowedOrigins = [
+  FRONTEND_URL,
+  'https://eliche-radice.vercel.app',
+  'https://eliche-radice.vercel.app/',
+  'http://localhost:3000',
+  'http://localhost:3001',
+].filter(Boolean); // Remove any undefined/null values
+
 const corsOptions = {
-  origin: FRONTEND_URL,
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Check if origin is in allowed list
+    if (allowedOrigins.some(allowed => origin === allowed || origin.startsWith(allowed.replace(/\/$/, '')))) {
+      callback(null, true);
+    } else {
+      console.warn('⚠️ CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -26,7 +46,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
-console.log('🔧 CORS configured for:', FRONTEND_URL);
+console.log('🔧 CORS configured for origins:', allowedOrigins);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -86,7 +106,7 @@ const server = http.createServer(app);
 // Initialize Socket.io with CORS configuration - MUST MATCH CORS
 const io = new Server(server, {
   cors: {
-    origin: FRONTEND_URL,
+    origin: allowedOrigins,
     methods: ['GET', 'POST'],
     credentials: true
   },

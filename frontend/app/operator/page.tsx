@@ -19,7 +19,8 @@ export default function OperatorDashboard() {
   
   const loadConversations = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/conversations/all`);
+      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/$/, '');
+      const response = await fetch(`${apiUrl}/api/conversations/all`);
       const data = await response.json();
       setConversations(data.data || []);
       setLoading(false);
@@ -39,7 +40,8 @@ export default function OperatorDashboard() {
   useEffect(() => {
     const loadAiSetting = async () => {
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/ai-setting`);
+        const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/$/, '');
+        const response = await fetch(`${apiUrl}/api/ai-setting`);
         const data = await response.json();
         setAiAutoResponseEnabled(data.enabled || false);
       } catch (error) {
@@ -54,7 +56,8 @@ export default function OperatorDashboard() {
     const newValue = !aiAutoResponseEnabled;
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/ai-setting`, {
+      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/$/, '');
+      const response = await fetch(`${apiUrl}/api/ai-setting`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ enabled: newValue }),
