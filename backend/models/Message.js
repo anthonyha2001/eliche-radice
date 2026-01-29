@@ -1,4 +1,4 @@
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 const { getDatabase } = require('../db/connection');
 
 /**
@@ -15,7 +15,7 @@ class Message {
   static async create(conversationId, sender, content) {
     try {
       const db = await getDatabase();
-      const id = uuidv4();
+      const id = randomUUID();
       const timestamp = Date.now();
       const read = 0;
 

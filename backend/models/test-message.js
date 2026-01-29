@@ -1,6 +1,6 @@
 const Message = require('./Message');
 const { getDatabase, closeDatabase } = require('../db/connection');
-const { v4: uuidv4 } = require('uuid');
+const { randomUUID } = require('crypto');
 
 /**
  * Test Message model operations
@@ -16,7 +16,7 @@ async function testMessageModel() {
     const db = await getDatabase();
 
     // Create a test conversation first (required for foreign key constraint)
-    testConversationId = uuidv4();
+    testConversationId = randomUUID();
     await new Promise((resolve, reject) => {
       db.run(
         'INSERT INTO conversations (id, customer_id, status, priority, created_at, last_message_at) VALUES (?, ?, ?, ?, ?, ?)',
