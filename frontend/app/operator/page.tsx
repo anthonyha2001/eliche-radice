@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { getSocket } from '@/lib/socket';
 import { getConversation, updateConversationStatus } from '@/lib/api';
+import { cleanUrl } from '@/lib/utils';
 import ConversationList from '@/components/ConversationList';
 import MessageList from '@/components/MessageList';
 import MessageInput from '@/components/MessageInput';
@@ -19,7 +20,7 @@ export default function OperatorDashboard() {
   
   const loadConversations = async () => {
     try {
-      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/$/, '');
+      const apiUrl = cleanUrl(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001');
       const response = await fetch(`${apiUrl}/api/conversations/all`);
       const data = await response.json();
       setConversations(data.data || []);
@@ -40,7 +41,7 @@ export default function OperatorDashboard() {
   useEffect(() => {
     const loadAiSetting = async () => {
       try {
-        const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/$/, '');
+        const apiUrl = cleanUrl(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001');
         const response = await fetch(`${apiUrl}/api/ai-setting`);
         const data = await response.json();
         setAiAutoResponseEnabled(data.enabled || false);
@@ -56,7 +57,7 @@ export default function OperatorDashboard() {
     const newValue = !aiAutoResponseEnabled;
 
     try {
-      const apiUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/$/, '');
+      const apiUrl = cleanUrl(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001');
       const response = await fetch(`${apiUrl}/api/ai-setting`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

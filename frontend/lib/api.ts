@@ -1,5 +1,7 @@
+import { cleanUrl } from './utils';
+
 // Normalize API URL - remove trailing slash to prevent double slashes
-const API_URL = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/$/, '');
+const API_URL = cleanUrl(process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001');
 
 /**
  * Fetch with timeout
