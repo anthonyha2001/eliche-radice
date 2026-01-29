@@ -304,11 +304,19 @@ server.listen(PORT, async () => {
   console.log(`Environment: ${NODE_ENV}`);
   console.log(`Frontend URL: ${FRONTEND_URL}`);
 
-  // Ensure PostgreSQL schema exists before background jobs
-  await ensureSchema();
-  
-  // Start conversation expiration job
-  startConversationExpirationJob();
+  try {
+    // Ensure PostgreSQL schema exists before background jobs
+    await ensureSchema();
+    console.log('✅ Database schema verified, starting background jobs...');
+    
+    // Start conversation expiration job (only after schema is confirmed)
+    startConversationExpirationJob();
+  } catch (error) {
+    console.error('❌ CRITICAL: Failed to initialize database schema');
+    console.error('   Server will continue but database operations may fail');
+    console.error('   Error:', error.message);
+    // Don't crash the server, but log clearly
+  }
 });
 
 /**
@@ -318,10 +326,12 @@ server.listen(PORT, async () => {
 function startConversationExpirationJob() {
   const Conversation = require('./models/Conversation');
   
-  // Run immediately on startup
-  Conversation.expireOldConversations(24).catch(err => {
-    console.error('Error expiring conversations on startup:', err);
-  });
+  // Delay initial run by 5 seconds to ensure schema is fully ready
+  setTimeout(() => {
+    Conversation.expireOldConversations(24).catch(err => {
+      console.error('Error expiring conversations on startup:', err.message);
+    });
+  }, 5000);
   
   // Then run every hour (3600000 milliseconds)
   const EXPIRATION_INTERVAL = 60 * 60 * 1000; // 1 hour
@@ -335,11 +345,11 @@ function startConversationExpirationJob() {
         }
       })
       .catch(err => {
-        console.error('❌ Error expiring conversations:', err);
+        console.error('❌ Error expiring conversations:', err.message);
       });
   }, EXPIRATION_INTERVAL);
   
-  console.log('⏰ Conversation expiration job started (runs every hour)');
+  console.log('⏰ Conversation expiration job started (runs every hour, initial run delayed 5s)');
 }
 
 // Graceful shutdown
