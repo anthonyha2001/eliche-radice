@@ -140,7 +140,7 @@ router.patch('/:id/status', async (req, res) => {
       const resolvedMessage = await Message.create(
         id,
         'operator',
-        'Thank you for contacting Eliche Radiche. Your request has been resolved. If you need further assistance, please feel free to reach out again.'
+        'Thank you for contacting Eliche Radice LB. Your request has been resolved. If you need further assistance, please feel free to reach out again.'
       );
 
       // Broadcast resolved message and status via Socket.io

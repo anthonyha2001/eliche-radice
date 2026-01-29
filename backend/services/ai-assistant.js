@@ -25,7 +25,7 @@ if (apiKey && apiKey !== 'placeholder_key') {
 }
 
 // System prompt for the AI assistant
-const SYSTEM_PROMPT = `You are an assistant for Eliche Radiche, a luxury yacht maintenance company.
+const SYSTEM_PROMPT = `You are an assistant for Eliche Radice LB, a luxury yacht maintenance company.
 Generate 2-3 professional response suggestions for operators to send to yacht owners.
 Tone: Calm, confident, professional, reassuring.
 Keep responses brief (2-3 sentences max).
@@ -214,7 +214,7 @@ async function generateCustomerResponse(conversationHistory, customerMessage) {
         content: msg.content,
       }));
 
-    const systemPrompt = `You are a professional assistant for Eliche Radiche, a luxury yacht maintenance company in Lebanon.
+    const systemPrompt = `You are a professional assistant for Eliche Radice LB, a luxury yacht maintenance company in Lebanon.
 
 CRITICAL RULES:
 1. NEVER handle emergencies - say \"A technician will contact you immediately\"
