@@ -73,7 +73,15 @@ console.log('🔧 CORS configured for origins:', allowedOrigins);
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok' });
+  res.status(200).json({ 
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: Math.floor(process.uptime()),
+    socketIo: {
+      connected: io.engine.clientsCount || 0,
+      path: '/socket.io/'
+    }
+  });
 });
 
 // AI setting endpoints
@@ -126,53 +134,91 @@ app.use((err, req, res, next) => {
 // Create HTTP server
 const server = http.createServer(app);
 
-// Initialize Socket.io with CORS configuration - MUST MATCH CORS
+// Helper function to check if origin is allowed (same as Express CORS)
+function isOriginAllowed(origin) {
+  if (!origin) return true; // Allow no origin (like mobile apps)
+  
+  const normalizedOrigin = origin.replace(/\/$/, '');
+  
+  return allowedOrigins.some(allowed => {
+    const normalizedAllowed = allowed.replace(/\/$/, '');
+    
+    // Exact match
+    if (normalizedOrigin === normalizedAllowed) {
+      return true;
+    }
+    
+    // Wildcard pattern match (e.g., https://*.vercel.app)
+    if (normalizedAllowed.includes('*')) {
+      const pattern = normalizedAllowed.replace(/\*/g, '.*');
+      const regex = new RegExp(`^${pattern}$`);
+      return regex.test(normalizedOrigin);
+    }
+    
+    return false;
+  });
+}
+
+// Initialize Socket.io with CORS configuration - MUST MATCH Express CORS
+// Use array of origins for Socket.IO (more reliable than callback)
+const socketIoOrigins = allowedOrigins.filter(origin => !origin.includes('*')); // Socket.IO doesn't support wildcards in array
+
 const io = new Server(server, {
   cors: {
     origin: (origin, callback) => {
-      // Same logic as Express CORS
-      if (!origin) {
-        return callback(null, true);
+      const allowed = isOriginAllowed(origin);
+      if (allowed) {
+        console.log(`✅ Socket.IO CORS allowed origin: ${origin}`);
+        callback(null, true);
+      } else {
+        console.warn(`⚠️ Socket.IO CORS blocked origin: ${origin}`);
+        console.warn(`   Allowed origins: ${allowedOrigins.join(', ')}`);
+        callback(new Error(`Origin ${origin} not allowed`), false);
       }
-      const normalizedOrigin = origin.replace(/\/$/, '');
-      const isAllowed = allowedOrigins.some(allowed => {
-        const normalizedAllowed = allowed.replace(/\/$/, '');
-        if (normalizedOrigin === normalizedAllowed) return true;
-        if (normalizedAllowed.includes('*')) {
-          const pattern = normalizedAllowed.replace(/\*/g, '.*');
-          return new RegExp(`^${pattern}$`).test(normalizedOrigin);
-        }
-        return false;
-      });
-      callback(isAllowed ? null : new Error('Not allowed'), isAllowed);
     },
     methods: ['GET', 'POST'],
-    credentials: true
+    credentials: true, // Required for cookies/auth if used
+    allowedHeaders: ['Content-Type', 'Authorization']
   },
   transports: ['websocket', 'polling'], // Try websocket first, fallback to polling
-  allowEIO3: true // Compatibility
+  allowEIO3: true, // Compatibility
+  path: '/socket.io/', // Default path (explicit for clarity)
+  pingTimeout: 60000,
+  pingInterval: 25000
 });
 
 // Make io available to routes
 app.set('io', io);
 
 console.log('🔌 Socket.io configured for origins:', allowedOrigins);
-console.log('✅ Socket.io instance attached to app');
+console.log('✅ Socket.io instance attached to HTTP server');
+console.log('✅ Socket.io will handle WebSocket upgrades on /socket.io/');
 
-// Socket.io error handling
+// Socket.io error handling with detailed logging
 io.engine.on('connection_error', (err) => {
-  console.error('❌ Socket.io connection error:', {
-    code: err.code,
-    message: err.message,
-    context: err.context
-  });
+  console.error('❌ Socket.io connection error:');
+  console.error('   Code:', err.code);
+  console.error('   Message:', err.message);
+  console.error('   Context:', err.context);
+  console.error('   Type:', err.type);
+  if (err.req) {
+    console.error('   Request origin:', err.req.headers?.origin);
+    console.error('   Request headers:', JSON.stringify(err.req.headers, null, 2));
+  }
 });
 
-// Socket.io connection handler
+// Socket.io connection handler with detailed logging
 io.on('connection', (socket) => {
-  console.log('✅ Socket.io client connected:', socket.id);
+  const origin = socket.handshake.headers.origin;
+  const userAgent = socket.handshake.headers['user-agent'];
+  
+  console.log('✅ Socket.io client connected:');
+  console.log('   Socket ID:', socket.id);
+  console.log('   Origin:', origin || '(no origin)');
   console.log('   Transport:', socket.conn.transport.name);
   console.log('   IP:', socket.handshake.address);
+  console.log('   User-Agent:', userAgent?.substring(0, 50) || '(unknown)');
+  console.log('   Headers:', JSON.stringify(socket.handshake.headers, null, 2));
   
   // Track which conversations this socket is subscribed to
   socket.conversationRooms = new Set();
@@ -352,16 +398,23 @@ io.on('connection', (socket) => {
     }
   });
   
-  socket.on('disconnect', () => {
-    console.log('🔌 Client disconnected:', socket.id);
+  socket.on('disconnect', (reason) => {
+    console.log('🔌 Client disconnected:');
+    console.log('   Socket ID:', socket.id);
+    console.log('   Reason:', reason);
   });
 });
 
-// Start server
+// Start server - IMPORTANT: Only ONE listener on PORT
 server.listen(PORT, async () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📦 Environment: ${NODE_ENV}`);
   console.log(`🌐 CORS origins: ${allowedOrigins.join(', ')}`);
+  console.log(`🔌 Socket.IO path: /socket.io/`);
+  console.log(`🔌 Socket.IO transports: websocket, polling`);
+  console.log(`✅ HTTP server listening on port ${PORT}`);
+  console.log(`✅ Socket.IO server attached to HTTP server`);
+  console.log(`✅ Health endpoint available at: http://localhost:${PORT}/health`);
 
   try {
     // Ensure PostgreSQL schema exists before background jobs
