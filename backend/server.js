@@ -20,65 +20,48 @@ const allowedOrigins = allowedOriginsString.split(',').map(url => url.trim()).fi
 
 console.log('🔧 CORS configured for origins:', allowedOrigins);
 
-// Express CORS - MUST be before routes
-app.use(cors({
+// Express CORS - CRITICAL: Must handle OPTIONS correctly
+const corsOptions = {
   origin: function (origin, callback) {
-    // Allow requests with no origin (mobile apps, Postman, server-to-server)
+    // Always allow requests with no origin (Postman, server-to-server, mobile apps)
     if (!origin) {
       return callback(null, true);
     }
     
-    // Normalize origin (remove trailing slash)
     const normalizedOrigin = origin.replace(/\/$/, '');
     
-    // Check if origin is in allowed list (exact match)
-    const isAllowed = allowedOrigins.some(allowed => {
-      const normalizedAllowed = allowed.replace(/\/$/, '');
-      return normalizedOrigin === normalizedAllowed;
+    // Check exact match
+    const isExactMatch = allowedOrigins.some(allowed => {
+      return normalizedOrigin === allowed.replace(/\/$/, '');
     });
     
-    if (isAllowed) {
-      callback(null, true);
-    } else {
-      console.log('❌ CORS blocked origin:', origin);
-      callback(new Error('Not allowed by CORS'));
+    // Allow all Vercel deployments
+    const isVercel = normalizedOrigin.includes('.vercel.app');
+    
+    // Allow localhost
+    const isLocalhost = normalizedOrigin.match(/^https?:\/\/localhost(:\d+)?$/);
+    
+    if (isExactMatch || isVercel || isLocalhost) {
+      return callback(null, true);
     }
+    
+    console.log('❌ CORS blocked origin:', origin);
+    callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
-  optionsSuccessStatus: 200
-}));
+  optionsSuccessStatus: 200,
+  preflightContinue: false
+};
+
+app.use(cors(corsOptions));
 
 // Body parser
 app.use(express.json());
 
-// Explicit CORS headers for all responses (backup)
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  
-  if (origin) {
-    const normalizedOrigin = origin.replace(/\/$/, '');
-    const isAllowed = allowedOrigins.some(allowed => {
-      const normalizedAllowed = allowed.replace(/\/$/, '');
-      return normalizedOrigin === normalizedAllowed;
-    });
-    
-    if (isAllowed) {
-      res.header('Access-Control-Allow-Origin', origin);
-      res.header('Access-Control-Allow-Credentials', 'true');
-      res.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS');
-      res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    }
-  }
-  
-  // Handle preflight
-  if (req.method === 'OPTIONS') {
-    return res.sendStatus(200);
-  }
-  
-  next();
-});
+// OPTIONS handler - MUST come after cors() middleware
+app.options('*', cors(corsOptions));
 
 // Health check endpoint (defined before Socket.IO, so no io reference)
 app.get('/health', (req, res) => {
@@ -142,51 +125,31 @@ app.use((err, req, res, next) => {
 // Socket.IO will handle WebSocket upgrades automatically
 const server = http.createServer(app);
 
-// Initialize Socket.io with CORS configuration - MUST MATCH Express CORS
-// Use function to allow Vercel preview deployments and localhost
+// Initialize Socket.io with CORS - MUST MATCH Express CORS logic
 const io = new Server(server, {
   cors: {
     origin: (origin, callback) => {
-      // Allow no origin (server-to-server, mobile apps)
-      if (!origin) {
-        return callback(null, true);
-      }
+      if (!origin) return callback(null, true);
       
-      // Normalize origin
       const normalizedOrigin = origin.replace(/\/$/, '');
+      const isExactMatch = allowedOrigins.some(a => normalizedOrigin === a.replace(/\/$/, ''));
+      const isVercel = normalizedOrigin.includes('.vercel.app');
+      const isLocalhost = normalizedOrigin.match(/^https?:\/\/localhost(:\d+)?$/);
       
-      // Check exact match from allowedOrigins
-      const isExactMatch = allowedOrigins.some(allowed => {
-        const normalizedAllowed = allowed.replace(/\/$/, '');
-        return normalizedOrigin === normalizedAllowed;
-      });
-      
-      if (isExactMatch) {
+      if (isExactMatch || isVercel || isLocalhost) {
         return callback(null, true);
       }
       
-      // Allow all Vercel preview deployments
-      if (normalizedOrigin.includes('.vercel.app')) {
-        console.log('✅ Socket.io CORS - Allowing Vercel domain:', origin);
-        return callback(null, true);
-      }
-      
-      // Allow localhost on any port
-      if (normalizedOrigin.match(/^https?:\/\/localhost(:\d+)?$/)) {
-        console.log('✅ Socket.io CORS - Allowing localhost:', origin);
-        return callback(null, true);
-      }
-      
-      console.log('❌ Socket.io CORS blocked origin:', origin);
-      callback(new Error('Not allowed by CORS'));
+      console.log('❌ Socket CORS blocked:', origin);
+      callback(new Error('Not allowed'));
     },
     methods: ['GET', 'POST'],
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization']
   },
-  transports: ['polling', 'websocket'], // Try polling first (more reliable), then websocket
-  allowEIO3: true, // Compatibility
-  path: '/socket.io/', // Default path (explicit for clarity)
+  transports: ['polling', 'websocket'],
+  allowEIO3: true,
+  path: '/socket.io/',
   pingTimeout: 60000,
   pingInterval: 25000
 });
