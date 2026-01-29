@@ -463,11 +463,23 @@ server.listen(PORT, async () => {
     // Start conversation expiration job (only after schema is confirmed)
     startConversationExpirationJob();
   } catch (error) {
-    console.error('❌ CRITICAL: Failed to initialize database schema');
+    console.error('⚠️ Database initialization failed, will retry later');
     console.error('   Error:', error.message);
-    console.error('   Exiting with code 1 to trigger Railway restart...');
-    // Exit with non-zero to trigger Railway restart
-    process.exit(1);
+    // DON'T exit - server can still run, schema will be created on first request
+    console.log('⏳ Background jobs delayed, database tables will be created on first API call');
+    
+    // Retry schema creation after 30 seconds
+    setTimeout(async () => {
+      try {
+        console.log('🔄 Retrying database schema initialization...');
+        await ensureSchema();
+        console.log('✅ Database schema verified on retry');
+        startConversationExpirationJob();
+      } catch (retryError) {
+        console.error('⚠️ Database retry failed:', retryError.message);
+        console.log('⏳ Will continue retrying on API requests');
+      }
+    }, 30000);
   }
 });
 
