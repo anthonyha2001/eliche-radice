@@ -19,11 +19,13 @@ export function getSocket(): Socket {
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
       reconnectionAttempts: 5,
-      transports: ['websocket', 'polling'], // Try websocket first
+      transports: ['polling', 'websocket'], // Try polling first (more reliable), then websocket
       autoConnect: true,
       withCredentials: true,
       forceNew: false,
-      timeout: 10000, // 10 second connection timeout
+      timeout: 20000, // 20 second connection timeout
+      upgrade: true, // Allow transport upgrade
+      rememberUpgrade: false, // Don't remember failed upgrades
     });
     
     socket.on('connect', () => {
@@ -45,12 +47,22 @@ export function getSocket(): Socket {
       console.error('❌ Socket connection error:', {
         message: error.message,
         description: error.toString(),
-        stack: error.stack
+        type: error.type,
+        transport: socket?.io?.engine?.transport?.name || 'unknown'
       });
+      
+      // If websocket fails, try forcing polling
+      if (error.message.includes('websocket') && socket?.io?.engine?.transport?.name === 'websocket') {
+        console.log('🔄 WebSocket failed, attempting to upgrade to polling...');
+        socket.io.opts.transports = ['polling'];
+        socket.io.opts.upgrade = false; // Disable upgrade attempts
+      }
+      
       console.log('🔍 Troubleshooting:');
-      console.log('   1. Is backend running? Check http://localhost:3001/health');
-      console.log('   2. Check .env.local has NEXT_PUBLIC_SOCKET_URL=http://localhost:3001');
-      console.log('   3. Check backend CORS allows http://localhost:3000');
+      console.log('   1. Is backend running? Check', `${SOCKET_URL}/health`);
+      console.log('   2. Check NEXT_PUBLIC_SOCKET_URL is set correctly');
+      console.log('   3. Check backend CORS allows your origin');
+      console.log('   4. Current transport:', socket?.io?.engine?.transport?.name || 'unknown');
     });
     
     socket.on('reconnect_attempt', (attemptNumber) => {

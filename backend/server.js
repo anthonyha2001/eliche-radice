@@ -71,16 +71,12 @@ app.use(express.json());
 
 console.log('🔧 CORS configured for origins:', allowedOrigins);
 
-// Health check endpoint
+// Health check endpoint (defined before Socket.IO, so no io reference)
 app.get('/health', (req, res) => {
   res.status(200).json({ 
     status: 'ok',
     timestamp: new Date().toISOString(),
-    uptime: Math.floor(process.uptime()),
-    socketIo: {
-      connected: io.engine.clientsCount || 0,
-      path: '/socket.io/'
-    }
+    uptime: Math.floor(process.uptime())
   });
 });
 
@@ -132,6 +128,8 @@ app.use((err, req, res, next) => {
 });
 
 // Create HTTP server
+// IMPORTANT: Socket.IO must be attached to this server instance
+// Socket.IO will handle WebSocket upgrades automatically
 const server = http.createServer(app);
 
 // Helper function to check if origin is allowed (same as Express CORS)
@@ -190,6 +188,19 @@ const io = new Server(server, {
 // Make io available to routes
 app.set('io', io);
 
+// Update health endpoint to include Socket.IO stats (now that io is defined)
+app.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: Math.floor(process.uptime()),
+    socketIo: {
+      connected: io.engine.clientsCount || 0,
+      path: '/socket.io/'
+    }
+  });
+});
+
 console.log('🔌 Socket.io configured for origins:', allowedOrigins);
 console.log('✅ Socket.io instance attached to HTTP server');
 console.log('✅ Socket.io will handle WebSocket upgrades on /socket.io/');
@@ -199,12 +210,31 @@ io.engine.on('connection_error', (err) => {
   console.error('❌ Socket.io connection error:');
   console.error('   Code:', err.code);
   console.error('   Message:', err.message);
+  console.error('   Description:', err.description);
   console.error('   Context:', err.context);
   console.error('   Type:', err.type);
   if (err.req) {
     console.error('   Request origin:', err.req.headers?.origin);
+    console.error('   Request URL:', err.req.url);
+    console.error('   Request method:', err.req.method);
     console.error('   Request headers:', JSON.stringify(err.req.headers, null, 2));
   }
+  if (err.context) {
+    console.error('   Error context:', JSON.stringify(err.context, null, 2));
+  }
+});
+
+// Additional error handlers for WebSocket-specific errors
+io.engine.on('upgrade_error', (err) => {
+  console.error('❌ Socket.io upgrade error:');
+  console.error('   Message:', err.message);
+  console.error('   Stack:', err.stack);
+});
+
+io.engine.on('upgrade', (req) => {
+  console.log('🔄 Socket.io upgrade successful:');
+  console.log('   Origin:', req.headers.origin || '(no origin)');
+  console.log('   Path:', req.url);
 });
 
 // Socket.io connection handler with detailed logging
