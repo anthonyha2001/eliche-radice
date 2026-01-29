@@ -6,28 +6,6 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 
-// Database initialization
-const pool = require('./db/connection');
-
-// Initialize database on startup
-async function initializeDatabase() {
-  try {
-    console.log('🔄 Initializing PostgreSQL database...');
-    
-    const schemaPath = path.join(__dirname, 'db', 'schema.sql');
-    const schema = fs.readFileSync(schemaPath, 'utf8');
-    
-    await pool.query(schema);
-    
-    console.log('✅ Database tables created/verified');
-  } catch (error) {
-    console.error('❌ Database initialization error:', error);
-  }
-}
-
-// Call initialization
-initializeDatabase();
-
 // Load environment variables
 const PORT = process.env.PORT || 3001;
 const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:3000';
