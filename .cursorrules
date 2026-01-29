@@ -1,0 +1,762 @@
+# .cursorrules - Eliche Radiche Development Standards
+
+## Project Context
+This is an MVP for a luxury yacht maintenance company's digital front desk.
+Core principle: Professional, human-first communication system for yacht owners.
+
+---
+
+## Architecture Principles
+
+### Separation of Concerns
+- **Frontend**: Presentation only, no business logic
+- **Backend**: Business logic, data validation, API
+- **Database**: Data persistence, relationships
+- **Services**: Reusable business logic (prioritizer, AI assistant)
+
+### Single Responsibility Rule
+- One file = one clear purpose
+- One function = one task
+- One component = one UI element
+- If explaining requires "and", split it
+
+### No Overengineering
+- Build exactly what's in the spec
+- No "nice to have" features
+- No premature abstractions
+- No unused dependencies
+- Ask before adding complexity
+
+---
+
+## Code Style Rules
+
+### TypeScript Standards
+```typescript
+// ✅ GOOD - Explicit types, clear naming
+interface Message {
+  id: string;
+  content: string;
+  sender: MessageSender;
+  timestamp: Date;
+}
+
+async function saveMessage(message: Message): Promise<void> {
+  await db.insert('messages', message);
+}
+
+// ❌ BAD - Any types, unclear names
+function save(data: any): any {
+  return db.insert('messages', data);
+}
+```
+
+**Rules**:
+- Never use `any` type (use `unknown` if truly unknown, then narrow)
+- All interfaces exported from `shared/types.ts`
+- Strict mode enabled in tsconfig.json
+- Return types explicit for all functions
+- Async functions always return Promise
+
+---
+
+### React/Next.js Standards
+
+```typescript
+// ✅ GOOD - Server component by default
+export default async function ConversationsPage() {
+  const conversations = await getConversations();
+  return <ConversationList conversations={conversations} />;
+}
+
+// ✅ GOOD - Client component only when needed
+'use client';
+
+import { useState } from 'react';
+
+export default function ChatWidget() {
+  const [isOpen, setIsOpen] = useState(false);
+  // ... socket logic, interactions
+}
+
+// ❌ BAD - Unnecessary client component
+'use client';
+
+export default function StaticSection() {
+  return <div>Static content</div>;
+}
+```
+
+**Rules**:
+- Server components by default
+- `'use client'` only for: state, effects, event handlers, browser APIs
+- File size limit: 200 lines (split if exceeded)
+- One component per file
+- Props interface defined above component
+- Destructure props in function signature
+
+---
+
+### Component Composition
+
+```typescript
+// ✅ GOOD - Composed from smaller components
+export function ConversationCard({ conversation }: Props) {
+  return (
+    <div className="card">
+      <PriorityBadge priority={conversation.priority} />
+      <CustomerInfo customerId={conversation.customerId} />
+      <LastMessage message={conversation.lastMessage} />
+      <TimeStamp time={conversation.lastMessageAt} />
+    </div>
+  );
+}
+
+// ❌ BAD - Monolithic component
+export function ConversationCard({ conversation }: Props) {
+  return (
+    <div className="card">
+      {/* 150 lines of mixed concerns */}
+    </div>
+  );
+}
+```
+
+---
+
+### Styling Standards
+
+```typescript
+// ✅ GOOD - Tailwind utility classes
+<div className="flex items-center gap-4 p-6 bg-navy-900 rounded-lg">
+  <PriorityBadge priority="critical" />
+</div>
+
+// ✅ GOOD - Custom class for repeated patterns
+// In globals.css:
+// .card-luxury { @apply p-6 bg-white rounded-lg shadow-gold; }
+<div className="card-luxury">
+
+// ❌ BAD - Inline styles
+<div style={{ display: 'flex', padding: '24px' }}>
+
+// ❌ BAD - Custom CSS for one-off use
+<div className="custom-weird-div">
+// In separate CSS file:
+// .custom-weird-div { padding: 24px; }
+```
+
+**Rules**:
+- Tailwind classes only (no inline styles)
+- Custom CSS only for: repeated patterns (3+ uses), animations, brand tokens
+- Mobile-first responsive: base classes = mobile, `md:` = tablet, `lg:` = desktop
+- Brand colors: `navy-900`, `gold-500`, `white`, `gray-100`
+- Spacing: use scale (p-4, p-6, p-8, not arbitrary values)
+
+---
+
+### Backend Standards
+
+```javascript
+// ✅ GOOD - Async/await, error handling, validation
+async function createConversation(req, res) {
+  try {
+    const { customerId, priority } = req.body;
+    
+    if (!customerId) {
+      return res.status(400).json({ error: 'Customer ID required' });
+    }
+    
+    const conversation = await Conversation.create(customerId, priority);
+    
+    res.status(201).json({ data: conversation });
+  } catch (error) {
+    console.error('Failed to create conversation:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+}
+
+// ❌ BAD - Callbacks, no error handling, no validation
+function createConversation(req, res) {
+  Conversation.create(req.body.customerId, (err, conversation) => {
+    res.json(conversation);
+  });
+}
+```
+
+**Rules**:
+- Always async/await (never callbacks)
+- Try/catch on every async operation
+- Validate inputs before using
+- Return consistent JSON structure: `{ data: ..., error: ... }`
+- Log errors with context
+- HTTP status codes: 200/201 (success), 400 (validation), 401 (auth), 404 (not found), 500 (server error)
+
+---
+
+### Database Standards
+
+```javascript
+// ✅ GOOD - Parameterized query
+const message = await db.get(
+  'SELECT * FROM messages WHERE id = ?',
+  [messageId]
+);
+
+// ✅ GOOD - Transaction for multi-step
+await db.run('BEGIN TRANSACTION');
+try {
+  await db.run('INSERT INTO conversations ...');
+  await db.run('INSERT INTO messages ...');
+  await db.run('COMMIT');
+} catch (error) {
+  await db.run('ROLLBACK');
+  throw error;
+}
+
+// ❌ BAD - SQL injection risk
+const message = await db.get(
+  `SELECT * FROM messages WHERE id = ${messageId}`
+);
+
+// ❌ BAD - No transaction for related changes
+await db.run('INSERT INTO conversations ...');
+await db.run('INSERT INTO messages ...'); // If this fails, orphaned conversation
+```
+
+**Rules**:
+- ALWAYS use parameterized queries (? placeholders)
+- Transactions for multi-step operations
+- Indexes on foreign keys and frequently queried fields
+- No raw SQL in routes (use model methods)
+- Migration files tracked in `backend/db/migrations/`
+
+---
+
+## Naming Conventions
+
+### Files
+- `kebab-case.tsx` - React components
+- `kebab-case.ts` - Utilities, services
+- `kebab-case.js` - Backend files
+- `PascalCase.tsx` - Only for component files that export default component
+
+### Code Elements
+```typescript
+// Components: PascalCase
+function MessageList() {}
+
+// Functions: camelCase
+function calculatePriority() {}
+
+// Constants: UPPER_SNAKE_CASE
+const MAX_MESSAGE_LENGTH = 500;
+
+// Variables: camelCase
+const conversationId = uuid();
+
+// Interfaces/Types: PascalCase
+interface Conversation {}
+type MessageSender = 'customer' | 'operator';
+
+// Database: snake_case
+const row = await db.get('SELECT conversation_id FROM messages');
+
+// CSS Classes: kebab-case
+<div className="chat-widget-header">
+```
+
+---
+
+## Git Workflow
+
+### Commit Messages
+```bash
+# ✅ GOOD - Action verb + what + why (if not obvious)
+git commit -m "Add message prioritization to flag critical conversations"
+git commit -m "Fix socket disconnection causing message loss"
+git commit -m "Update ChatWidget to show typing indicator"
+
+# ❌ BAD - Vague or no context
+git commit -m "changes"
+git commit -m "fix bug"
+git commit -m "update stuff"
+```
+
+**Format**: `<verb> <what> [why]`
+- Verbs: Add, Remove, Fix, Update, Refactor, Test
+- What: Specific feature/file/bug
+- Why: Only if not obvious from what
+
+### Branch Strategy (for team)
+- `main` - Production-ready code
+- `develop` - Integration branch
+- `feature/feature-name` - New features
+- `fix/bug-name` - Bug fixes
+
+### What to Commit
+```bash
+# ✅ Commit
+- Source code (.ts, .tsx, .js)
+- Configuration (package.json, tsconfig.json)
+- Documentation (.md)
+- Example environment files (.env.example)
+
+# ❌ Never commit
+- .env (secrets!)
+- node_modules/
+- .DS_Store
+- database.sqlite (local dev data)
+- *.log files
+```
+
+---
+
+## Testing Guidelines
+
+### What to Test
+1. **Critical paths** (MUST test):
+   - Message send/receive flow
+   - Priority detection logic
+   - Socket connection handling
+   - Database CRUD operations
+
+2. **Important features** (SHOULD test):
+   - AI suggestion generation
+   - Conversation status updates
+   - Real-time updates
+
+3. **Nice to have** (CAN test):
+   - UI component rendering
+   - Styling edge cases
+
+### Test Structure
+```typescript
+// ✅ GOOD - Clear, focused test
+describe('Message Prioritizer', () => {
+  it('should flag message as critical when containing "urgent"', () => {
+    const priority = analyzePriority('Urgent: Engine failure!');
+    expect(priority).toBe('critical');
+  });
+  
+  it('should return normal priority for general questions', () => {
+    const priority = analyzePriority('How much is maintenance?');
+    expect(priority).toBe('normal');
+  });
+});
+
+// ❌ BAD - Vague, testing too much
+it('should work correctly', () => {
+  // 50 lines testing everything
+});
+```
+
+---
+
+## Error Handling Standards
+
+### Frontend Errors
+```typescript
+// ✅ GOOD - User-friendly message + logging
+try {
+  await sendMessage(content);
+} catch (error) {
+  console.error('Failed to send message:', error);
+  toast.error('Message could not be sent. Please try again.');
+}
+
+// ❌ BAD - Generic or no error handling
+try {
+  await sendMessage(content);
+} catch (error) {
+  alert('Error!');
+}
+```
+
+### Backend Errors
+```javascript
+// ✅ GOOD - Specific error, context, appropriate status
+try {
+  const conversation = await Conversation.findById(id);
+  if (!conversation) {
+    return res.status(404).json({ error: 'Conversation not found' });
+  }
+  // ...
+} catch (error) {
+  console.error(`Failed to fetch conversation ${id}:`, error);
+  res.status(500).json({ error: 'Failed to load conversation' });
+}
+
+// ❌ BAD - Exposes internals, no logging
+try {
+  const conversation = await Conversation.findById(id);
+  res.json(conversation);
+} catch (error) {
+  res.status(500).json({ error: error.message });
+}
+```
+
+---
+
+## Performance Guidelines
+
+### Frontend Performance
+```typescript
+// ✅ GOOD - Memoization for expensive operations
+const sortedConversations = useMemo(
+  () => conversations.sort((a, b) => b.lastMessageAt - a.lastMessageAt),
+  [conversations]
+);
+
+// ✅ GOOD - Debounced input
+const debouncedSearch = useDebouncedCallback(
+  (query) => searchConversations(query),
+  300
+);
+
+// ❌ BAD - Recalculating on every render
+const sortedConversations = conversations.sort(...); // Runs every render!
+```
+
+### Backend Performance
+```javascript
+// ✅ GOOD - Batch database queries
+const conversations = await db.all(`
+  SELECT c.*, 
+         (SELECT COUNT(*) FROM messages WHERE conversation_id = c.id) as message_count
+  FROM conversations c
+`);
+
+// ❌ BAD - N+1 query problem
+const conversations = await db.all('SELECT * FROM conversations');
+for (const conv of conversations) {
+  conv.messageCount = await db.get('SELECT COUNT(*) FROM messages WHERE conversation_id = ?', [conv.id]);
+}
+```
+
+### Image Optimization
+- Next.js Image component for all images
+- WebP format preferred
+- Lazy load below fold
+- Responsive sizes defined
+
+---
+
+## Security Checklist
+
+### Input Validation
+```typescript
+// ✅ GOOD - Validate and sanitize
+function createMessage(content: string): Message {
+  if (!content || content.trim().length === 0) {
+    throw new Error('Message content required');
+  }
+  
+  if (content.length > MAX_MESSAGE_LENGTH) {
+    throw new Error(`Message too long (max ${MAX_MESSAGE_LENGTH} chars)`);
+  }
+  
+  const sanitized = sanitizeHtml(content);
+  return { content: sanitized, ...otherFields };
+}
+
+// ❌ BAD - No validation
+function createMessage(content: string): Message {
+  return { content, ...otherFields };
+}
+```
+
+### API Security
+- Never expose API keys in frontend code
+- Use environment variables for secrets
+- HTTPS only in production
+- CORS configured for frontend domain only
+- Rate limiting on API endpoints (future)
+
+### Data Privacy
+- Don't log sensitive data (messages, customer info)
+- Don't expose internal IDs unnecessarily
+- GDPR consideration: ability to delete data (future)
+
+---
+
+## Accessibility Standards (WCAG 2.1 AA)
+
+```typescript
+// ✅ GOOD - Accessible button
+<button
+  aria-label="Send message"
+  onClick={handleSend}
+  disabled={!content}
+  className="btn-primary focus:ring-2 focus:ring-gold-500"
+>
+  <SendIcon aria-hidden="true" />
+  Send
+</button>
+
+// ✅ GOOD - Accessible form
+<form onSubmit={handleSubmit}>
+  <label htmlFor="message-input" className="sr-only">
+    Type your message
+  </label>
+  <input
+    id="message-input"
+    type="text"
+    placeholder="Type your message..."
+    aria-required="true"
+  />
+</form>
+
+// ❌ BAD - Not accessible
+<div onClick={handleSend}>Send</div> {/* Not keyboard accessible */}
+<input placeholder="Type here" /> {/* No label */}
+```
+
+**Requirements**:
+- All interactive elements keyboard accessible
+- ARIA labels on icon-only buttons
+- Form inputs have associated labels
+- Color contrast ratio ≥ 4.5:1 for text
+- Focus indicators visible
+- Screen reader tested (use VoiceOver/NVDA)
+
+---
+
+## Brand Tone Guidelines
+
+### Writing for Yacht Owners (UI Copy)
+```typescript
+// ✅ GOOD - Professional, calm, confident
+"Your message has been received. We'll respond within 5 minutes."
+"Eliche Radiche is here to help. Describe your situation."
+"Our team is reviewing your request."
+
+// ❌ BAD - Casual, playful, uncertain
+"Got your message! We'll get back to you soon-ish 😊"
+"Hey there! What's up with your boat?"
+"We might be able to help, not sure."
+```
+
+### Error Messages
+```typescript
+// ✅ GOOD - Clear, actionable, reassuring
+"Connection lost. Reconnecting automatically..."
+"Message not sent. Please check your internet and try again."
+"We couldn't load conversations. Refresh to try again."
+
+// ❌ BAD - Technical, alarming, vague
+"Socket.io connection error ERR_TIMEOUT"
+"Fatal error occurred!!!"
+"Something went wrong."
+```
+
+### Success Messages
+```typescript
+// ✅ GOOD - Confident, brief
+"Message sent"
+"Conversation resolved"
+"Preferences saved"
+
+// ❌ BAD - Over-enthusiastic, too long
+"Woohoo! Your message was sent successfully! 🎉"
+"Great job! The conversation has been marked as resolved and archived."
+```
+
+---
+
+## Code Review Checklist
+
+Before submitting code, verify:
+
+**Functionality**:
+- [ ] Code does what the prompt requested
+- [ ] No extra features added
+- [ ] Edge cases handled
+- [ ] Error states handled
+
+**Code Quality**:
+- [ ] No TypeScript errors
+- [ ] No console warnings
+- [ ] Follows naming conventions
+- [ ] Comments only where necessary (code should be self-explanatory)
+- [ ] No commented-out code
+- [ ] No debug console.logs
+
+**Testing**:
+- [ ] Manually tested in browser
+- [ ] Tested on mobile viewport
+- [ ] Tested with slow network (throttle in DevTools)
+- [ ] Tested error scenarios
+
+**Performance**:
+- [ ] No unnecessary re-renders
+- [ ] Images optimized
+- [ ] No blocking operations
+- [ ] Lazy loading where appropriate
+
+**Security**:
+- [ ] No hardcoded secrets
+- [ ] Input validated
+- [ ] SQL queries parameterized
+- [ ] XSS prevention (sanitized inputs)
+
+**Accessibility**:
+- [ ] Keyboard navigable
+- [ ] ARIA labels where needed
+- [ ] Sufficient color contrast
+- [ ] Focus indicators visible
+
+**Brand**:
+- [ ] Matches luxury aesthetic
+- [ ] Professional tone in copy
+- [ ] Navy/gold color palette used
+- [ ] Appropriate spacing (luxury = whitespace)
+
+---
+
+## When You're Stuck
+
+### Debugging Steps
+1. **Read the error message** - Don't skim, read every word
+2. **Check the logs** - Browser console AND server console
+3. **Verify environment** - Are .env variables set?
+4. **Isolate the problem** - Comment out code until it works
+5. **Check previous working version** - What changed?
+
+### Getting Help
+When asking for help, provide:
+- What you're trying to do
+- What you expected to happen
+- What actually happened
+- Error message (full text)
+- Code snippet (minimal reproduction)
+
+### Common Issues & Fixes
+
+**"Cannot read property of undefined"**
+→ Check if data exists before accessing: `data?.property`
+
+**"CORS error"**
+→ Verify CORS configuration in backend server.js
+
+**"Socket not connecting"**
+→ Check NEXT_PUBLIC_SOCKET_URL in frontend .env.local
+
+**"Database locked"**
+→ Close all database connections, restart server
+
+**"Port already in use"**
+→ Kill process: `lsof -ti:3001 | xargs kill -9`
+
+---
+
+## Maintenance Tasks
+
+### Daily (During Development)
+- Check console for warnings/errors
+- Review TODO comments
+- Run tests before pushing
+
+### Weekly
+- Review bundle size (Next.js build output)
+- Check for unused dependencies
+- Update dependencies (patch versions only)
+
+### Monthly (Post-Launch)
+- Review error logs
+- Analyze performance metrics
+- Plan refactoring if tech debt accumulating
+
+---
+
+## Documentation Requirements
+
+### Code Comments
+```typescript
+// ✅ GOOD - Comment explains WHY, not WHAT
+// Debounce to avoid overwhelming AI API with rapid requests
+const debouncedGenerate = useDebouncedCallback(generateSuggestions, 300);
+
+// ❌ BAD - Comment states the obvious
+// This function sends a message
+function sendMessage() {}
+```
+
+**When to comment**:
+- Non-obvious business logic
+- Workarounds or hacks (with TODO)
+- Complex algorithms
+- API quirks or limitations
+
+**When NOT to comment**:
+- Self-explanatory code
+- Obvious functionality
+- Restating variable names
+
+### README Updates
+Update README.md when:
+- New environment variable added
+- New dependency required
+- Setup process changes
+- New script added to package.json
+
+---
+
+## Environment Variables
+
+### Required Variables
+
+**Backend (.env)**:
+```bash
+PORT=3001
+DATABASE_URL=./db/database.sqlite
+OPENAI_API_KEY=sk-...
+FRONTEND_URL=http://localhost:3000
+NODE_ENV=development
+```
+
+**Frontend (.env.local)**:
+```bash
+NEXT_PUBLIC_API_URL=http://localhost:3001
+NEXT_PUBLIC_SOCKET_URL=http://localhost:3001
+```
+
+### Validation
+Both projects should validate environment variables on startup:
+```typescript
+const requiredEnvVars = ['OPENAI_API_KEY', 'FRONTEND_URL'];
+for (const varName of requiredEnvVars) {
+  if (!process.env[varName]) {
+    throw new Error(`Missing required environment variable: ${varName}`);
+  }
+}
+```
+
+---
+
+## Final Reminders
+
+### The Golden Rules
+1. **One responsibility per file** - If explaining requires "and", split it
+2. **Test before moving on** - Each atomic prompt must work before next
+3. **No premature optimization** - Build it simple first
+4. **Human-readable code** - Future you should understand it instantly
+5. **Follow the spec** - Don't add features not requested
+
+### When in Doubt
+- Refer to ARCHITECTURE.md
+- Check CURSOR_PROMPTS.md for guidance
+- Ask for clarification before guessing
+- Choose the simpler solution
+
+### Success Metrics
+- Code works on first try
+- Another developer understands it without explanation
+- No technical debt introduced
+- Yacht owner would trust the system
+
+---
+
+**Rules Last Updated**: January 28, 2026
+**Reviewed By**: Senior Architect
+**Next Review**: After MVP completion
