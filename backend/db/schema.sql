@@ -1,5 +1,8 @@
 -- PostgreSQL Schema for Railway
 
+-- Ensure required extension for gen_random_uuid()
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 -- Create conversations table
 CREATE TABLE IF NOT EXISTS conversations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
