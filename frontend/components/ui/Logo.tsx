@@ -1,5 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 
 interface LogoProps {
   variant?: 'default' | 'footer' | 'watermark';
@@ -35,36 +36,41 @@ export default function Logo({
     watermark: 'text-sm', // Watermark: small text
   };
   
-  const LogoContent = () => (
-    <div className={`flex items-center ${sizeStyles[variant]} ${paddingStyles[variant]} ${className}`}>
-      {/* Logo Icon/Image Placeholder */}
-      <div className="flex-shrink-0">
-        {/* Replace this with actual logo image */}
-        <div className={`${sizeStyles[variant]} flex items-center justify-center rounded-md bg-navy-900 text-white font-bold`} style={{ background: 'linear-gradient(to bottom right, #0A1929, #1A2332)' }}>
-          <span className="text-xs lg:text-sm">ER</span>
+  const LogoContent = () => {
+    // Size mapping for the logo image - no background container
+    const logoSizes = {
+      default: { width: 180, height: 60 },
+      footer: { width: 150, height: 50 },
+      watermark: { width: 120, height: 40 },
+    };
+    
+    const logoSize = logoSizes[variant];
+    
+    return (
+      <div className={`flex items-center gap-0 ${sizeStyles[variant]} ${paddingStyles[variant]} ${className}`}>
+        {/* Logo Image - No Background, no spacing */}
+        <div className="flex-shrink-0 -mr-0">
+          <Image
+            src="/images/Logo white-01.png"
+            alt="Eliche Radice LB"
+            width={logoSize.width}
+            height={logoSize.height}
+            className="object-contain block"
+            priority={variant === 'default'}
+          />
         </div>
-        {/* Alternative: Use actual image
-        <Image
-          src="/logo.svg"
-          alt="Eliche Radice LB"
-          width={variant === 'watermark' ? 24 : variant === 'footer' ? 32 : 40}
-          height={variant === 'watermark' ? 24 : variant === 'footer' ? 32 : 40}
-          className={sizeStyles[variant]}
-          priority={variant === 'default'}
-        />
-        */}
+        
+        {/* Logo Text - No spacing, directly adjacent */}
+        {showText && (
+          <span className={`text-premium font-bold leading-none ${textStyles[variant]} ${
+            variant === 'footer' ? 'text-white' : 'text-navy-900'
+          }`}>
+            Eliche Radice LB
+          </span>
+        )}
       </div>
-      
-      {/* Logo Text */}
-      {showText && (
-        <span className={`text-premium font-bold ml-3 ${textStyles[variant]} ${
-          variant === 'footer' ? 'text-white' : 'text-navy-900'
-        }`}>
-          Eliche Radice LB
-        </span>
-      )}
-    </div>
-  );
+    );
+  };
   
   // Watermark variant doesn't link
   if (variant === 'watermark') {

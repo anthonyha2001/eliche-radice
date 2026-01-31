@@ -64,7 +64,7 @@ export default function CustomerInfoForm({ onSubmit }: CustomerInfoFormProps) {
               setName(e.target.value);
               setErrors(prev => ({ ...prev, name: undefined }));
             }}
-            placeholder="John Smith"
+            placeholder="Michel Kattoura"
             className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-500 ${
               errors.name ? 'border-red-500' : 'border-gray-300'
             }`}
@@ -86,7 +86,7 @@ export default function CustomerInfoForm({ onSubmit }: CustomerInfoFormProps) {
               setPhone(e.target.value);
               setErrors(prev => ({ ...prev, phone: undefined }));
             }}
-            placeholder="+1 (555) 123-4567"
+            placeholder="+961 70186060"
             className={`w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-500 ${
               errors.phone ? 'border-red-500' : 'border-gray-300'
             }`}

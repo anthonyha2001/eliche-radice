@@ -21,6 +21,13 @@ export const metadata: Metadata = {
     description: "Expert yacht maintenance and support services. Always reachable when your vessel needs it most.",
     type: "website",
   },
+  icons: {
+    icon: [
+      { url: '/images/Logo white-01.png', type: 'image/png' },
+    ],
+    apple: '/images/Logo white-01.png',
+    shortcut: '/images/Logo white-01.png',
+  },
 };
 
 export default function RootLayout({

@@ -1,7 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import Logo from './Logo';
-import { Phone, Mail, MapPin, Clock, ShieldCheck } from 'lucide-react';
+import { Phone, Mail, MapPin, Clock, ShieldCheck, Instagram, Facebook } from 'lucide-react';
 
 interface FooterLink {
   label: string;
@@ -90,10 +90,10 @@ export default function Footer({
                       <span className="inline-flex items-center gap-1">
                         <Phone className="w-3 h-3 text-gold-400" />
                         <a
-                          href="tel:+9611234567"
+                          href="tel:+96170186060"
                           className="link-luxury text-gray-300"
                         >
-                          +961 1 234 567
+                          +961 70186060
                         </a>
                       </span>
                       <span className="inline-flex items-center gap-1">
