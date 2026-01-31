@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Conversation = require('../models/Conversation');
 const Message = require('../models/Message');
+const { generateSuggestions } = require('../services/ai-assistant');
 
 // Valid status values
 const VALID_STATUSES = ['active', 'resolved', 'waiting'];
@@ -231,6 +232,59 @@ router.patch('/:id/customer-info', async (req, res) => {
   } catch (error) {
     console.error('Error updating customer info:', error);
     res.status(500).json({ error: 'Failed to update customer info' });
+  }
+});
+
+/**
+ * GET /conversations/:id/suggestions
+ * Generate AI response suggestions for a conversation
+ */
+router.get('/:id/suggestions', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ error: 'Conversation ID is required' });
+    }
+
+    // Check if conversation exists
+    const conversation = await Conversation.findById(id);
+    if (!conversation) {
+      return res.status(404).json({ error: 'Conversation not found' });
+    }
+
+    // Get the last message from the conversation
+    const messages = await Message.findByConversationId(id);
+    
+    if (messages.length === 0) {
+      return res.status(200).json({ data: [] });
+    }
+
+    // Get the last customer message
+    const lastCustomerMessage = messages
+      .filter(msg => msg.sender === 'customer')
+      .pop();
+
+    if (!lastCustomerMessage) {
+      return res.status(200).json({ data: [] });
+    }
+
+    // Generate suggestions
+    console.log(`🤖 Generating AI suggestions for conversation ${id}`);
+    const suggestions = await generateSuggestions(messages, lastCustomerMessage.content);
+
+    // Format suggestions for frontend
+    const formattedSuggestions = suggestions.map((content, index) => ({
+      id: `suggestion-${index}`,
+      content: content,
+    }));
+
+    console.log(`✅ Generated ${formattedSuggestions.length} suggestions`);
+    
+    res.status(200).json({ data: formattedSuggestions });
+  } catch (error) {
+    console.error('Error generating suggestions:', error);
+    res.status(500).json({ error: 'Failed to generate suggestions' });
   }
 });
 

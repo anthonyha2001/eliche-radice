@@ -12,16 +12,24 @@ const apiKey = process.env.OPENAI_API_KEY;
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 
 if (apiKey && apiKey !== 'placeholder_key') {
+  // Validate API key format
+  if (!apiKey.startsWith('sk-')) {
+    console.warn('⚠️ OpenAI API key format looks invalid (should start with "sk-")');
+  }
+  
   try {
     openai = new OpenAI({
       apiKey: apiKey,
     });
     console.log(`✅ OpenAI client initialized with model: ${OPENAI_MODEL}`);
+    console.log(`   API key: ${apiKey.substring(0, 7)}...${apiKey.substring(apiKey.length - 4)}`);
   } catch (error) {
     console.warn('Failed to initialize OpenAI client:', error.message);
   }
 } else {
   console.log('⚠️ OpenAI API key not configured or placeholder used');
+  console.log('   Set OPENAI_API_KEY environment variable to enable AI features');
+  console.log('   Get your API key from: https://platform.openai.com/api-keys');
 }
 
 // System prompt for the AI assistant
@@ -158,24 +166,32 @@ async function generateSuggestions(conversationHistory, newMessage) {
     // Handle errors gracefully with richer debug info
     const status = error?.status || error?.response?.status;
     const message = error?.message || 'Unknown error';
+    const errorCode = error?.code || error?.response?.data?.error?.code;
 
     if (message === 'OpenAI API request timeout') {
-      console.error('OpenAI API request timed out after 10 seconds');
+      console.error('❌ OpenAI API request timed out after 10 seconds');
     } else if (status === 401) {
-      console.error('OpenAI API authentication failed. Check OPENAI_API_KEY.');
+      console.error('❌ OpenAI API authentication failed (401)');
+      console.error('   Check OPENAI_API_KEY is correct and not expired');
+      console.error('   Get a new key from: https://platform.openai.com/api-keys');
     } else if (status === 429) {
-      console.error('OpenAI API rate limit exceeded');
+      console.error('❌ OpenAI API rate limit exceeded (429)');
+      console.error('   You have exceeded your API rate limit. Please wait before retrying.');
     } else if (status === 404) {
-      console.error('OpenAI API model not found or no access. Check OPENAI_MODEL and your account access.', {
-        model: OPENAI_MODEL,
-        status,
-        message,
-      });
+      console.error('❌ OpenAI API model not found or no access (404)');
+      console.error(`   Model: ${OPENAI_MODEL}`);
+      console.error('   Check that you have access to this model in your OpenAI account');
+    } else if (errorCode === 'insufficient_quota') {
+      console.error('❌ OpenAI API insufficient quota');
+      console.error('   Your OpenAI account has no credits remaining');
+      console.error('   Add credits at: https://platform.openai.com/account/billing');
     } else {
-      console.error('Error generating AI suggestions:', {
+      console.error('❌ Error generating AI suggestions:', {
         status,
+        errorCode,
         message,
-        stack: error?.stack,
+        model: OPENAI_MODEL,
+        stack: error?.stack?.split('\n').slice(0, 3).join('\n'),
       });
     }
     
@@ -257,10 +273,12 @@ You MUST say \"Our team will contact you directly\" for:
     return null;
   } catch (error) {
     const status = error?.status || error?.response?.status;
+    const errorCode = error?.code || error?.response?.data?.error?.code;
     console.error('❌ AI error in generateCustomerResponse:', {
       status,
+      errorCode,
       message: error?.message,
-      stack: error?.stack,
+      model: OPENAI_MODEL,
     });
     return null;
   }

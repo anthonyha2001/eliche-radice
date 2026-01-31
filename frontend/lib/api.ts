@@ -187,3 +187,22 @@ export async function updateCustomerInfo(conversationId: string, customerName: s
   return response.json();
 }
 
+/**
+ * Get AI suggestions for a conversation
+ */
+export async function getSuggestions(conversationId: string) {
+  const response = await fetchWithTimeout(
+    `${API_URL}/api/conversations/${conversationId}/suggestions`,
+    {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    }
+  );
+  
+  if (!response.ok) {
+    throw new Error('Failed to fetch suggestions');
+  }
+  
+  return response.json();
+}
+

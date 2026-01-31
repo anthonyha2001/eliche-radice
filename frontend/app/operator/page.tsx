@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { getSocket } from '@/lib/socket';
-import { getConversation, updateConversationStatus } from '@/lib/api';
+import { getConversation, updateConversationStatus, getSuggestions } from '@/lib/api';
 import { cleanUrl } from '@/lib/utils';
 import ConversationList from '@/components/ConversationList';
 import MessageList from '@/components/MessageList';
@@ -105,6 +105,11 @@ export default function OperatorDashboard() {
           console.log('✅ Adding message to conversation');
           return [...prev, data.message];
         });
+        
+        // Reload suggestions when a new customer message arrives
+        if (data.message.sender === 'customer' && selectedId) {
+          loadSuggestions(selectedId);
+        }
       }
       
       // Refresh conversation list to update last message
@@ -176,8 +181,23 @@ export default function OperatorDashboard() {
     try {
       const response = await getConversation(id);
       setMessages(response.data.messages || []);
+      
+      // Load suggestions when messages are loaded
+      await loadSuggestions(id);
     } catch (error) {
       console.error('Failed to load messages:', error);
+    }
+  };
+  
+  const loadSuggestions = async (conversationId: string) => {
+    try {
+      console.log('🤖 Loading AI suggestions for conversation:', conversationId);
+      const response = await getSuggestions(conversationId);
+      setSuggestions(response.data || []);
+      console.log(`✅ Loaded ${response.data?.length || 0} suggestions`);
+    } catch (error) {
+      console.error('❌ Failed to load suggestions:', error);
+      setSuggestions([]);
     }
   };
   
@@ -340,17 +360,9 @@ export default function OperatorDashboard() {
               suggestions={suggestions}
               onUse={handleUseSuggestion}
               onRefresh={() => {
-                // TODO: Generate suggestions via API
-                setSuggestions([
-                  {
-                    id: '1',
-                    content: 'Thank you for reaching out. We can assist with that immediately.',
-                  },
-                  {
-                    id: '2',
-                    content: 'I understand your concern. Let me connect you with our senior technician.',
-                  },
-                ]);
+                if (selectedId) {
+                  loadSuggestions(selectedId);
+                }
               }}
               loading={false}
             />
