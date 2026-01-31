@@ -6,9 +6,10 @@ interface MessageInputProps {
   onSend: (content: string) => void | Promise<void>;
   disabled?: boolean;
   onTyping?: () => void;
+  placeholder?: string;
 }
 
-export default function MessageInput({ onSend, disabled, onTyping }: MessageInputProps) {
+export default function MessageInput({ onSend, disabled, onTyping, placeholder = 'Type your message...' }: MessageInputProps) {
   const [content, setContent] = useState('');
   const [charCount, setCharCount] = useState(0);
   const [isSending, setIsSending] = useState(false);
@@ -66,7 +67,7 @@ export default function MessageInput({ onSend, disabled, onTyping }: MessageInpu
             onChange={handleChange}
             onKeyDown={handleKeyDown}
             disabled={disabled}
-            placeholder="Type your message..."
+            placeholder={placeholder}
             className="w-full p-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-gold-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
             rows={1}
             style={{ minHeight: '44px', maxHeight: '100px' }}

@@ -109,8 +109,10 @@ app.post('/api/ai-setting', (req, res) => {
 // API routes
 const conversationsRouter = require('./routes/conversations');
 const messagesRouter = require('./routes/messages');
+const notificationsRouter = require('./routes/notifications');
 app.use('/api/conversations', conversationsRouter);
 app.use('/api/messages', messagesRouter);
+app.use('/api/notifications', notificationsRouter);
 
 // Global error handler
 app.use((err, req, res, next) => {

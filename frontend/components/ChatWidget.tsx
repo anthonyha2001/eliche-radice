@@ -2,10 +2,11 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { getSocket } from '@/lib/socket';
-import { createConversation, updateCustomerInfo } from '@/lib/api';
+import { createConversation } from '@/lib/api';
 import MessageList from './MessageList';
 import MessageInput from './MessageInput';
-import CustomerInfoForm from './CustomerInfoForm';
+
+type CollectionStep = 'idle' | 'collecting_name' | 'collecting_phone' | 'complete';
 
 export default function ChatWidget() {
   const [isOpen, setIsOpen] = useState(false);
@@ -13,8 +14,9 @@ export default function ChatWidget() {
   const [messages, setMessages] = useState<any[]>([]);
   const [isConnected, setIsConnected] = useState(false);
   const [conversationStatus, setConversationStatus] = useState<string>('active');
-  const [showInfoForm, setShowInfoForm] = useState(false);
-  const [customerInfo, setCustomerInfo] = useState<{name: string; phone: string} | null>(null);
+  const [collectionStep, setCollectionStep] = useState<CollectionStep>('idle');
+  const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
   const socketRef = useRef<any>(null);
   const isOpenRef = useRef<boolean>(false);
   
@@ -49,22 +51,25 @@ export default function ChatWidget() {
     if (storedId) {
       setConversationId(storedId);
       loadConversationMessages(storedId);
+      setCollectionStep('complete');
     }
     
     // Load customer info if exists
     if (storedInfo) {
       try {
         const info = JSON.parse(storedInfo);
-        setCustomerInfo(info);
+        setCustomerName(info.name);
+        setCustomerPhone(info.phone);
+        setCollectionStep('complete');
         console.log('✅ Customer info loaded:', info.name);
       } catch (error) {
         console.error('Failed to parse customer info:', error);
       }
     }
     
-    // Show form if no conversation and no customer info
-    if (!storedId && !storedInfo) {
-      setShowInfoForm(true);
+    // If no conversation, start collection flow
+    if (!storedId && !storedInfo && isOpen) {
+      setCollectionStep('idle');
     }
     
     // Initialize socket
@@ -238,26 +243,40 @@ export default function ChatWidget() {
     }
   }, [conversationId, isConnected]);
   
-  const handleInfoSubmit = async (name: string, phone: string) => {
-    console.log('📝 Customer info submitted:', { name, phone });
-    
-    // Save info to localStorage
-    const info = { name, phone };
-    setCustomerInfo(info);
-    localStorage.setItem('eliche_customer_info', JSON.stringify(info));
-    
-    // Create conversation
+  // Initialize welcome message when chat opens
+  useEffect(() => {
+    if (isOpen && messages.length === 0 && collectionStep === 'idle') {
+      const welcomeMessage = {
+        id: 'welcome',
+        sender: 'operator',
+        content: 'Welcome to Eliche Radice LB! How can we help you today?',
+        timestamp: Date.now(),
+        isSystem: true
+      };
+      setMessages([welcomeMessage]);
+    }
+  }, [isOpen, collectionStep]);
+
+  const addSystemMessage = (content: string) => {
+    const systemMsg = {
+      id: `system-${Date.now()}`,
+      sender: 'operator',
+      content,
+      timestamp: Date.now(),
+      isSystem: true
+    };
+    setMessages(prev => [...prev, systemMsg]);
+  };
+
+  const createConversationWithInfo = async (name: string, phone: string) => {
     try {
       const customerId = 'customer-' + Date.now();
-      const response = await createConversation(customerId, 'normal');
+      const response = await createConversation(customerId, 'normal', name, phone);
       const newConvId = response.data.id;
-      
-      // Update conversation with customer info
-      await updateCustomerInfo(newConvId, name, phone);
       
       setConversationId(newConvId);
       localStorage.setItem('eliche_conversation_id', newConvId);
-      setShowInfoForm(false);
+      localStorage.setItem('eliche_customer_info', JSON.stringify({ name, phone }));
       
       // Subscribe to conversation
       if (socketRef.current?.connected) {
@@ -265,27 +284,93 @@ export default function ChatWidget() {
       }
       
       console.log('✅ Conversation created with customer info');
+      
+      // Send admin notification
+      await sendAdminNotification(name, phone, newConvId);
+      
+      return newConvId;
     } catch (error) {
       console.error('❌ Failed to create conversation:', error);
-      alert('Failed to start conversation. Please try again.');
+      addSystemMessage('Sorry, something went wrong. Please try again.');
+      throw error;
+    }
+  };
+
+  const sendAdminNotification = async (name: string, phone: string, convId: string) => {
+    try {
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const cleanUrl = API_URL.replace(/\/$/, '');
+      
+      await fetch(`${cleanUrl}/api/notifications/new-customer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerName: name,
+          customerPhone: phone,
+          conversationId: convId
+        })
+      });
+      console.log('✅ Admin notification sent');
+    } catch (error) {
+      console.error('⚠️ Failed to send admin notification:', error);
+      // Don't show error to user - notification failure shouldn't block conversation
     }
   };
   
   const handleSendMessage = async (content: string) => {
-    console.log('📤 Sending message:', content);
+    if (!content.trim()) return;
     
-    // If no conversation ID, always show the info form
-    // We ask for name and phone at the start of every new conversation
-    if (!conversationId) {
-      setShowInfoForm(true);
+    const messageContent = content.trim();
+    
+    // Handle customer info collection flow
+    if (collectionStep === 'idle') {
+      // First message - ask for name
+      addSystemMessage('Can we please have your name to serve you better?');
+      setCollectionStep('collecting_name');
       return;
     }
 
-    // Send message via Socket.io (don't add optimistically)
-    socketRef.current?.emit('message:new', {
-      conversationId,
-      content,
-    });
+    if (collectionStep === 'collecting_name') {
+      // Save name, ask for phone
+      setCustomerName(messageContent);
+      addSystemMessage(`Thank you, ${messageContent}! And your phone number please?`);
+      setCollectionStep('collecting_phone');
+      return;
+    }
+
+    if (collectionStep === 'collecting_phone') {
+      // Save phone and create conversation
+      setCustomerPhone(messageContent);
+      setCollectionStep('complete');
+      
+      try {
+        await createConversationWithInfo(customerName, messageContent);
+        addSystemMessage('Thank you! Our team will assist you shortly. How can we help you today?');
+      } catch (error) {
+        // Error already handled in createConversationWithInfo
+        setCollectionStep('collecting_phone'); // Retry phone collection
+      }
+      return;
+    }
+
+    // Normal message flow (after info collected)
+    if (conversationId) {
+      // Add message optimistically
+      const tempMessage = {
+        id: `temp-${Date.now()}`,
+        conversationId,
+        sender: 'customer',
+        content: messageContent,
+        timestamp: Date.now()
+      };
+      setMessages(prev => [...prev, tempMessage]);
+      
+      // Send via Socket.io
+      socketRef.current?.emit('message:new', {
+        conversationId,
+        content: messageContent,
+      });
+    }
   };
   
   if (!isOpen) {
@@ -325,9 +410,10 @@ export default function ChatWidget() {
                   localStorage.removeItem('eliche_conversation_id');
                   localStorage.removeItem('eliche_customer_info');
                   setConversationId(null);
-                  setCustomerInfo(null);
+                  setCustomerName('');
+                  setCustomerPhone('');
+                  setCollectionStep('idle');
                   setMessages([]);
-                  setShowInfoForm(false);
                   console.log('🗑️ Conversation cleared');
                 }
               }}
@@ -351,20 +437,24 @@ export default function ChatWidget() {
       </div>
       
       {/* Content */}
-      {showInfoForm ? (
+      <>
         <div className="flex-1 overflow-y-auto">
-          <CustomerInfoForm onSubmit={handleInfoSubmit} />
+          <MessageList messages={messages} currentUser="customer" />
         </div>
-      ) : (
-        <>
-          <div className="flex-1 overflow-y-auto">
-            <MessageList messages={messages} currentUser="customer" />
-          </div>
-          <div className="border-t border-gray-200">
-            <MessageInput onSend={handleSendMessage} disabled={!isConnected} />
-          </div>
-        </>
-      )}
+        <div className="border-t border-gray-200">
+          <MessageInput 
+            onSend={handleSendMessage} 
+            disabled={!isConnected}
+            placeholder={
+              collectionStep === 'collecting_name' 
+                ? 'Enter your name...'
+                : collectionStep === 'collecting_phone'
+                ? 'Enter your phone number...'
+                : 'Type your message...'
+            }
+          />
+        </div>
+      </>
     </div>
   );
 }

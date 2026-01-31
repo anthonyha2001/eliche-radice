@@ -58,11 +58,21 @@ export async function getConversation(id: string) {
 /**
  * Create a new conversation
  */
-export async function createConversation(customerId: string, priority = 'normal') {
+export async function createConversation(
+  customerId: string, 
+  priority = 'normal', 
+  customerName?: string, 
+  customerPhone?: string
+) {
   const response = await fetchWithTimeout(`${API_URL}/api/conversations`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ customerId, priority }),
+    body: JSON.stringify({ 
+      customerId, 
+      priority,
+      customerName,
+      customerPhone
+    }),
   });
   
   if (!response.ok) {
