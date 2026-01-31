@@ -202,11 +202,31 @@ export default function ChatWidget() {
       // Add message with deduplication check
       setMessages(prev => {
         // Check if message already exists by ID
-        const exists = prev.some(msg => msg.id === data.message.id);
-        if (exists) {
-          console.log('⚠️ Duplicate message detected, skipping:', data.message.id);
+        const existsById = prev.some(msg => msg.id === data.message.id);
+        if (existsById) {
+          console.log('⚠️ Duplicate message detected by ID, skipping:', data.message.id);
           return prev;
         }
+        
+        // Check if this is a duplicate of a temp message (same content, same sender, recent timestamp)
+        const isDuplicateTemp = prev.some(msg => 
+          msg.content === data.message.content && 
+          msg.sender === data.message.sender &&
+          (msg.id.startsWith('temp-') || Math.abs(msg.timestamp - data.message.timestamp) < 2000) // Within 2 seconds
+        );
+        
+        if (isDuplicateTemp) {
+          console.log('⚠️ Duplicate temp message detected, replacing with real message');
+          // Replace temp message with real message
+          return prev.map(msg => 
+            (msg.id.startsWith('temp-') && 
+             msg.content === data.message.content && 
+             msg.sender === data.message.sender) 
+              ? data.message 
+              : msg
+          );
+        }
+        
         console.log('✅ Adding new message:', data.message.id);
         return [...prev, data.message];
       });
@@ -451,6 +471,17 @@ export default function ChatWidget() {
     // Handle customer info collection flow
     if (collectionStep === 'idle') {
       console.log('✅ Step: idle → asking for name');
+      
+      // Add user's message first
+      const userMessage = {
+        id: `user-${Date.now()}`,
+        sender: 'customer',
+        content: messageContent,
+        timestamp: Date.now()
+      };
+      setMessages(prev => [...prev, userMessage]);
+      
+      // Then ask for name
       addSystemMessage('Can we please have your name to serve you better?');
       setCollectionStep('collecting_name');
       console.log('✅ Step changed to: collecting_name');
@@ -460,6 +491,16 @@ export default function ChatWidget() {
     if (collectionStep === 'collecting_name') {
       console.log('✅ Step: collecting_name → saving name and asking for phone');
       console.log('✅ Name received:', messageContent);
+      
+      // Add user's name message first
+      const nameMessage = {
+        id: `user-${Date.now()}`,
+        sender: 'customer',
+        content: messageContent,
+        timestamp: Date.now()
+      };
+      setMessages(prev => [...prev, nameMessage]);
+      
       setCustomerName(messageContent);
       addSystemMessage(`Thank you, ${messageContent}! And your phone number please?`);
       setCollectionStep('collecting_phone');
@@ -478,6 +519,15 @@ export default function ChatWidget() {
       
       console.log('✅ Phone received:', messageContent);
       console.log('✅ Customer name (from state):', customerName);
+      
+      // Add user's phone message first
+      const phoneMessage = {
+        id: `user-${Date.now()}`,
+        sender: 'customer',
+        content: messageContent,
+        timestamp: Date.now()
+      };
+      setMessages(prev => [...prev, phoneMessage]);
       
       setCustomerPhone(messageContent);
       setIsCreatingConversation(true);
@@ -524,9 +574,13 @@ export default function ChatWidget() {
     console.log('🔵 Normal message flow, conversationId:', conversationId);
     if (conversationId) {
       console.log('✅ Sending message to conversation:', conversationId);
+      
+      // Create unique temp ID to prevent duplicates
+      const tempId = `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
       // Add message optimistically
       const tempMessage = {
-        id: `temp-${Date.now()}`,
+        id: tempId,
         conversationId,
         sender: 'customer',
         content: messageContent,
@@ -534,6 +588,16 @@ export default function ChatWidget() {
       };
       console.log('📤 Adding temp message to UI:', tempMessage);
       setMessages(prev => {
+        // Check if this exact message already exists
+        const exists = prev.some(msg => 
+          msg.content === messageContent && 
+          msg.sender === 'customer' &&
+          Math.abs(msg.timestamp - tempMessage.timestamp) < 1000
+        );
+        if (exists) {
+          console.log('⚠️ Message already in UI, skipping duplicate');
+          return prev;
+        }
         const newMessages = [...prev, tempMessage];
         console.log('📤 Messages after adding temp:', newMessages.length);
         return newMessages;
