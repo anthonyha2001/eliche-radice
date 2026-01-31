@@ -17,7 +17,7 @@ export default function Logo({
 }: LogoProps) {
   // Logo sizing rules based on variant
   const sizeStyles = {
-    default: 'h-10 w-auto', // Navbar: 40px height minimum
+    default: 'h-full w-auto', // Navbar: Fit parent height
     footer: 'h-8 w-auto', // Footer: 32px height
     watermark: 'h-6 w-auto opacity-20', // Watermark: 24px height, subtle
   };
@@ -39,7 +39,7 @@ export default function Logo({
   const LogoContent = () => {
     // Size mapping for the logo image - no background container
     const logoSizes = {
-      default: { width: 180, height: 60 },
+      default: { width: 180, height: 60 }, // Will be constrained by parent height
       footer: { width: 150, height: 50 },
       watermark: { width: 120, height: 40 },
     };
@@ -48,14 +48,14 @@ export default function Logo({
     
     return (
       <div className={`flex items-center gap-0 ${sizeStyles[variant]} ${paddingStyles[variant]} ${className}`}>
-        {/* Logo Image - No Background, no spacing */}
-        <div className="flex-shrink-0 -mr-0">
+        {/* Logo Image - No Background, no spacing, fits parent height */}
+        <div className={`flex-shrink-0 -mr-0 ${variant === 'default' ? 'h-full' : ''}`}>
           <Image
             src="/images/Logo white-01.png"
             alt="Eliche Radice LB"
             width={logoSize.width}
             height={logoSize.height}
-            className="object-contain block"
+            className={`object-contain block ${variant === 'default' ? 'h-full w-auto' : ''}`}
             priority={variant === 'default'}
           />
         </div>
