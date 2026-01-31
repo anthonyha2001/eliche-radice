@@ -9,6 +9,8 @@ import MessageInput from './MessageInput';
 type CollectionStep = 'idle' | 'collecting_name' | 'collecting_phone' | 'complete';
 
 export default function ChatWidget() {
+  console.log('🌐 API URL:', process.env.NEXT_PUBLIC_API_URL);
+  
   const [isOpen, setIsOpen] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<any[]>([]);
@@ -17,6 +19,7 @@ export default function ChatWidget() {
   const [collectionStep, setCollectionStep] = useState<CollectionStep>('idle');
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
+  const [isCreatingConversation, setIsCreatingConversation] = useState(false);
   const socketRef = useRef<any>(null);
   const isOpenRef = useRef<boolean>(false);
   
@@ -278,52 +281,96 @@ export default function ChatWidget() {
   };
 
   const createConversationWithInfo = async (name: string, phone: string) => {
-    console.log('🔄 createConversationWithInfo called');
-    console.log('🔄 Name:', name);
-    console.log('🔄 Phone:', phone);
+    console.log('🔵 createConversationWithInfo called');
+    console.log('🔵 Name:', name);
+    console.log('🔵 Phone:', phone);
     
     try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const cleanUrl = apiUrl.replace(/\/$/, '');
+      const url = `${cleanUrl}/api/conversations`;
+      
+      console.log('🔵 Fetching:', url);
+      
       const customerId = 'customer-' + Date.now();
-      console.log('🔄 Customer ID:', customerId);
-      console.log('🔄 Calling createConversation API...');
+      const requestBody = {
+        customerId,
+        customerName: name,
+        customerPhone: phone,
+        priority: 'normal'
+      };
       
-      const response = await createConversation(customerId, 'normal', name, phone);
-      console.log('🔄 API response received:', response);
+      console.log('🔵 Request body:', requestBody);
       
-      const newConvId = response.data.id;
-      console.log('✅ New conversation ID:', newConvId);
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(requestBody)
+      });
+
+      console.log('🔵 Response status:', response.status);
+      console.log('🔵 Response ok:', response.ok);
       
-      setConversationId(newConvId);
-      console.log('✅ Conversation ID set in state');
-      
-      localStorage.setItem('eliche_conversation_id', newConvId);
-      localStorage.setItem('eliche_customer_info', JSON.stringify({ name, phone }));
-      console.log('✅ Saved to localStorage');
-      
-      // Subscribe to conversation
-      if (socketRef.current?.connected) {
-        console.log('📡 Subscribing to conversation via socket');
-        socketRef.current.emit('conversation:subscribe', newConvId);
-        console.log('✅ Subscription event emitted');
-      } else {
-        console.warn('⚠️ Socket not connected, cannot subscribe');
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ API Error:', errorText);
+        console.error('❌ Status:', response.status);
+        throw new Error(`API returned ${response.status}: ${errorText}`);
       }
+
+      const data = await response.json();
+      console.log('✅ API Response:', data);
       
-      console.log('✅ Conversation created with customer info');
-      
-      // Send admin notification
-      console.log('📧 Sending admin notification...');
-      await sendAdminNotification(name, phone, newConvId);
-      console.log('✅ Admin notification sent');
-      
-      return newConvId;
+      if (data.data?.id) {
+        const convId = data.data.id;
+        console.log('✅✅✅ Setting conversation ID:', convId);
+        
+        // Set the conversation ID in state
+        setConversationId(convId);
+        console.log('✅ setConversationId called with:', convId);
+        
+        // Save to localStorage
+        localStorage.setItem('eliche_conversation_id', convId);
+        localStorage.setItem('eliche_customer_info', JSON.stringify({ name, phone }));
+        console.log('✅ Saved to localStorage');
+        
+        // Subscribe to conversation
+        if (socketRef.current?.connected) {
+          console.log('📡 Subscribing to conversation via socket');
+          socketRef.current.emit('conversation:subscribe', convId);
+          console.log('✅ Subscription event emitted');
+        } else {
+          console.warn('⚠️ Socket not connected, cannot subscribe');
+        }
+        
+        // Verify it was set (check after a brief delay)
+        setTimeout(() => {
+          console.log('🔍 Verifying conversation ID was set...');
+          const storedId = localStorage.getItem('eliche_conversation_id');
+          console.log('🔍 Stored ID:', storedId);
+        }, 100);
+        
+        // Send email notification (non-blocking)
+        sendAdminNotification(name, phone, convId).catch(err => {
+          console.warn('⚠️ Email notification failed:', err);
+        });
+        
+        // Return the ID so caller can verify
+        console.log('✅✅✅ Returning conversation ID:', convId);
+        return convId;
+      } else {
+        console.error('❌ No ID in response data:', data);
+        throw new Error('No conversation ID in response');
+      }
     } catch (error) {
-      console.error('❌ Failed to create conversation:', error);
+      console.error('❌ createConversationWithInfo error:', error);
       console.error('❌ Error details:', {
         message: error instanceof Error ? error.message : 'Unknown error',
         stack: error instanceof Error ? error.stack : undefined
       });
-      addSystemMessage('Sorry, something went wrong. Please try again.');
       throw error;
     }
   };
@@ -388,25 +435,55 @@ export default function ChatWidget() {
     }
 
     if (collectionStep === 'collecting_phone') {
-      console.log('✅ Step: collecting_phone → saving phone and creating conversation');
+      console.log('✅ Step: collecting_phone');
+      
+      if (isCreatingConversation) {
+        console.log('⏳ Already creating conversation, ignoring');
+        return;
+      }
+      
       console.log('✅ Phone received:', messageContent);
       console.log('✅ Customer name (from state):', customerName);
-      setCustomerPhone(messageContent);
-      setCollectionStep('complete');
-      console.log('✅ Step changed to: complete');
-      console.log('✅ Customer phone set to:', messageContent);
       
-      try {
-        console.log('🔄 Creating conversation with info...');
-        await createConversationWithInfo(customerName, messageContent);
-        console.log('✅ Conversation created successfully');
-        addSystemMessage('Thank you! Our team will assist you shortly. How can we help you today?');
-      } catch (error) {
-        console.error('❌ Error creating conversation:', error);
-        // Error already handled in createConversationWithInfo
-        setCollectionStep('collecting_phone'); // Retry phone collection
-        console.log('🔄 Retrying phone collection step');
-      }
+      setCustomerPhone(messageContent);
+      setIsCreatingConversation(true);
+      
+      // Show loading message
+      addSystemMessage('Thank you! Creating your conversation...');
+      
+      // Use setTimeout to allow state updates to process
+      setTimeout(async () => {
+        try {
+          console.log('🔄 Creating conversation with info...');
+          const convId = await createConversationWithInfo(customerName, messageContent);
+          
+          if (convId) {
+            console.log('✅✅✅ SUCCESS! Conversation ID:', convId);
+            console.log('✅✅✅ Verifying conversation ID in state...');
+            
+            // Double-check the ID was set
+            setTimeout(() => {
+              console.log('🔍 Final verification - conversationId state should be:', convId);
+            }, 200);
+            
+            // Only change step AFTER conversation is created and ID is confirmed
+            setCollectionStep('complete');
+            setIsCreatingConversation(false);
+            addSystemMessage('All set! How can we help you today?');
+            console.log('✅✅✅ Step changed to: complete');
+          } else {
+            console.error('❌ No conversation ID returned');
+            throw new Error('No conversation ID returned');
+          }
+        } catch (error) {
+          console.error('❌ Failed:', error);
+          setIsCreatingConversation(false);
+          addSystemMessage('Sorry, there was an error. Please try again.');
+          setCollectionStep('idle');
+          console.log('🔄 Reset to idle step');
+        }
+      }, 100);
+      
       return;
     }
 
@@ -515,9 +592,11 @@ export default function ChatWidget() {
         <div className="border-t border-gray-200">
           <MessageInput 
             onSend={handleSendMessage} 
-            disabled={!isConnected}
+            disabled={!isConnected || isCreatingConversation}
             placeholder={
-              collectionStep === 'collecting_name' 
+              isCreatingConversation
+                ? 'Creating conversation...'
+                : collectionStep === 'collecting_name' 
                 ? 'Enter your name...'
                 : collectionStep === 'collecting_phone'
                 ? 'Enter your phone number...'
