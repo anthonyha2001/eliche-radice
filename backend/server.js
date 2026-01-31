@@ -35,13 +35,16 @@ const corsOptions = {
       return normalizedOrigin === allowed.replace(/\/$/, '');
     });
     
+    // Allow production domain
+    const isProductionDomain = normalizedOrigin === 'https://elicheradicelb.com';
+    
     // Allow all Vercel deployments
     const isVercel = normalizedOrigin.includes('.vercel.app');
     
     // Allow localhost
     const isLocalhost = normalizedOrigin.match(/^https?:\/\/localhost(:\d+)?$/);
     
-    if (isExactMatch || isVercel || isLocalhost) {
+    if (isExactMatch || isProductionDomain || isVercel || isLocalhost) {
       return callback(null, true);
     }
     
@@ -130,10 +133,11 @@ const io = new Server(server, {
       
       const normalizedOrigin = origin.replace(/\/$/, '');
       const isExactMatch = allowedOrigins.some(a => normalizedOrigin === a.replace(/\/$/, ''));
+      const isProductionDomain = normalizedOrigin === 'https://elicheradicelb.com';
       const isVercel = normalizedOrigin.includes('.vercel.app');
       const isLocalhost = normalizedOrigin.match(/^https?:\/\/localhost(:\d+)?$/);
       
-      if (isExactMatch || isVercel || isLocalhost) {
+      if (isExactMatch || isProductionDomain || isVercel || isLocalhost) {
         return callback(null, true);
       }
       

@@ -5,9 +5,10 @@
 ### Required in Railway Backend Service:
 
 1. **`DATABASE_URL`** - Automatically provided by Railway when Postgres is attached
-2. **`CORS_ORIGINS`** - Comma-separated list of allowed origins
-   - Example: `https://eliche-radice.vercel.app,https://*.vercel.app,http://localhost:3000`
-   - Wildcards supported (e.g., `https://*.vercel.app`)
+2. **`FRONTEND_URL`** - Comma-separated list of allowed origins
+   - Example: `https://elicheradicelb.com,http://localhost:3000`
+   - Note: The production domain `https://elicheradicelb.com` is automatically allowed
+   - Localhost is also automatically allowed for development
 
 ### Optional:
 
@@ -19,13 +20,13 @@
 ```bash
 # Test preflight request
 curl -X OPTIONS http://localhost:3001/api/conversations \
-  -H "Origin: https://eliche-radice.vercel.app" \
+  -H "Origin: https://elicheradicelb.com" \
   -H "Access-Control-Request-Method: POST" \
   -H "Access-Control-Request-Headers: Content-Type" \
   -v
 
 # Should return:
-# Access-Control-Allow-Origin: https://eliche-radice.vercel.app
+# Access-Control-Allow-Origin: https://elicheradicelb.com
 # Access-Control-Allow-Methods: GET,POST,PATCH,DELETE,OPTIONS
 # Access-Control-Allow-Headers: Content-Type, Authorization
 ```
