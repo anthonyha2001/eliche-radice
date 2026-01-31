@@ -1,10 +1,15 @@
 'use client';
 
 import { useState, useEffect, Suspense } from 'react';
+import dynamic from 'next/dynamic';
 import { SectionHeader, Card, Button, Navbar, Footer } from '@/components/ui';
 import { useSearchParams } from 'next/navigation';
-import ChatWidget from '@/components/ChatWidget';
 import { Instagram, Facebook } from 'lucide-react';
+
+// Lazy load ChatWidget (doesn't block initial page load)
+const ChatWidget = dynamic(() => import('@/components/ChatWidget'), {
+  ssr: false,
+});
 
 function RequestServiceContent() {
   const searchParams = useSearchParams();

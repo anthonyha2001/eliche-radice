@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import dynamic from 'next/dynamic';
 import {
   Navbar,
   Footer,
@@ -7,8 +8,12 @@ import {
   FeatureList,
   Button,
 } from '@/components/ui';
-import ChatWidget from '@/components/ChatWidget';
 import { Instagram, Facebook } from 'lucide-react';
+
+// Lazy load ChatWidget (doesn't block initial page load)
+const ChatWidget = dynamic(() => import('@/components/ChatWidget'), {
+  ssr: false,
+});
 
 export const metadata: Metadata = {
   title: 'About Us - Eliche Radice LB | Yacht Maintenance Experts',

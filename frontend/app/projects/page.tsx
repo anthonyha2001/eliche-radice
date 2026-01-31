@@ -1,9 +1,14 @@
 'use client';
 
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { Navbar, Footer, SectionHeader, Card, Button, Badge } from '@/components/ui';
-import ChatWidget from '@/components/ChatWidget';
 import { Instagram, Facebook } from 'lucide-react';
+
+// Lazy load ChatWidget (doesn't block initial page load)
+const ChatWidget = dynamic(() => import('@/components/ChatWidget'), {
+  ssr: false,
+});
 
 // Note: Metadata cannot be exported from client components
 // SEO metadata is handled in layout.tsx for this page

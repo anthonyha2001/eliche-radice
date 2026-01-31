@@ -5,12 +5,19 @@ import "./globals.css";
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
+  display: 'swap', // Faster font loading
+  preload: true,
 });
 
 const playfair = Playfair_Display({
   subsets: ["latin"],
   variable: "--font-playfair",
+  display: 'swap', // Faster font loading
+  preload: true,
 });
+
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://eliche-radice-production.up.railway.app';
+const cleanApiUrl = apiUrl.replace(/\/$/, '');
 
 export const metadata: Metadata = {
   title: "Eliche Radice LB - Professional Yacht Maintenance | Lebanon",
@@ -27,6 +34,10 @@ export const metadata: Metadata = {
     ],
     apple: '/images/Logo white-01.png',
     shortcut: '/images/Logo white-01.png',
+  },
+  other: {
+    'preconnect': cleanApiUrl,
+    'dns-prefetch': cleanApiUrl,
   },
 };
 

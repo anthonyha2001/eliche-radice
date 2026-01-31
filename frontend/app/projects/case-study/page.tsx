@@ -1,5 +1,6 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import {
   Navbar,
   Footer,
@@ -7,8 +8,12 @@ import {
   Card,
   Button,
 } from '@/components/ui';
-import ChatWidget from '@/components/ChatWidget';
 import { Instagram, Facebook } from 'lucide-react';
+
+// Lazy load ChatWidget (doesn't block initial page load)
+const ChatWidget = dynamic(() => import('@/components/ChatWidget'), {
+  ssr: false,
+});
 
 export default function CaseStudyPage() {
   const navItems = [

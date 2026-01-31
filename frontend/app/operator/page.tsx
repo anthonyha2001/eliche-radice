@@ -251,10 +251,52 @@ export default function OperatorDashboard() {
   
   if (loading) {
     return (
-      <div className="h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading dashboard...</p>
+      <div className="h-screen flex flex-col">
+        {/* Header skeleton */}
+        <header className="bg-navy-900 text-white p-4 flex items-center justify-between">
+          <div className="space-y-2">
+            <div className="h-6 bg-navy-800 rounded w-64 animate-pulse"></div>
+            <div className="h-4 bg-navy-800 rounded w-32 animate-pulse"></div>
+          </div>
+        </header>
+        
+        {/* Content skeleton */}
+        <div className="flex-1 flex overflow-hidden">
+          {/* Conversation list skeleton */}
+          <div className="w-80 border-r border-gray-200 bg-gray-50 p-4 space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-white rounded-lg p-4 animate-pulse">
+                <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+              </div>
+            ))}
+          </div>
+          
+          {/* Main content skeleton */}
+          <div className="flex-1 flex flex-col">
+            <div className="bg-white border-b border-gray-200 p-4">
+              <div className="h-6 bg-gray-200 rounded w-48 animate-pulse"></div>
+            </div>
+            <div className="flex-1 bg-gray-50 p-4 space-y-4">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="bg-white rounded-lg p-4 animate-pulse">
+                  <div className="h-4 bg-gray-200 rounded w-full mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          {/* AI panel skeleton */}
+          <div className="w-80 border-l border-gray-200 bg-gray-50 p-4">
+            <div className="bg-white rounded-lg p-4 animate-pulse">
+              <div className="h-4 bg-gray-200 rounded w-3/4 mb-4"></div>
+              <div className="space-y-2">
+                <div className="h-3 bg-gray-200 rounded w-full"></div>
+                <div className="h-3 bg-gray-200 rounded w-5/6"></div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     );

@@ -3,7 +3,7 @@
 import { useState, useRef, KeyboardEvent } from 'react';
 
 interface MessageInputProps {
-  onSend: (content: string) => void;
+  onSend: (content: string) => void | Promise<void>;
   disabled?: boolean;
   onTyping?: () => void;
 }
@@ -11,6 +11,7 @@ interface MessageInputProps {
 export default function MessageInput({ onSend, disabled, onTyping }: MessageInputProps) {
   const [content, setContent] = useState('');
   const [charCount, setCharCount] = useState(0);
+  const [isSending, setIsSending] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const MAX_LENGTH = 500;
   
@@ -29,14 +30,21 @@ export default function MessageInput({ onSend, disabled, onTyping }: MessageInpu
     }
   };
   
-  const handleSend = () => {
+  const handleSend = async () => {
     const trimmed = content.trim();
-    if (trimmed && !disabled) {
-      onSend(trimmed);
-      setContent('');
-      setCharCount(0);
-      if (textareaRef.current) {
-        textareaRef.current.style.height = 'auto';
+    if (trimmed && !disabled && !isSending) {
+      setIsSending(true);
+      try {
+        await onSend(trimmed);
+        setContent('');
+        setCharCount(0);
+        if (textareaRef.current) {
+          textareaRef.current.style.height = 'auto';
+        }
+      } catch (error) {
+        console.error('Failed to send message:', error);
+      } finally {
+        setIsSending(false);
       }
     }
   };
@@ -71,13 +79,19 @@ export default function MessageInput({ onSend, disabled, onTyping }: MessageInpu
         </div>
         <button
           onClick={handleSend}
-          disabled={disabled || !content.trim()}
-          className="btn-primary h-11 px-4 disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={disabled || !content.trim() || isSending}
+          className={`btn-primary h-11 px-4 disabled:opacity-50 disabled:cursor-not-allowed ${
+            isSending ? 'animate-pulse' : ''
+          }`}
           aria-label="Send message"
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-          </svg>
+          {isSending ? (
+            <span className="text-sm">Sending...</span>
+          ) : (
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+            </svg>
+          )}
         </button>
       </div>
       {disabled && (
