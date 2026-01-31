@@ -36,7 +36,7 @@ export default function Navbar({
           {/* Logo */}
           {showLogo && (
             <div className="flex items-center">
-              {logo || <Logo variant="default" />}
+              {logo || <Logo variant="default" showText={false} />}
             </div>
           )}
           

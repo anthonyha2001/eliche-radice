@@ -7,17 +7,18 @@
        Premium • Marine • Minimal • Confident
        ============================================ */
     
-    /* Brand Colors - Navy (Deep Ocean) */
+    /* Brand Colors - Navy (Deep Ocean) - Matching Logo */
     --color-navy-950: #050B14;  /* Deepest navy - backgrounds */
-    --color-navy-900: #0A1929;  /* Primary navy - headers, primary elements */
+    --color-navy-900: #0A1628;  /* Primary navy - headers, primary elements (Logo color) */
     --color-navy-800: #1A2332;  /* Secondary navy - cards, elevated surfaces */
     --color-navy-700: #2A3441;  /* Tertiary navy - borders, dividers */
     --color-navy-600: #3A4450;  /* Disabled states */
     
-    /* Brand Colors - Gold (Luxury Accent) */
-    --color-gold-600: #B8941F;  /* Dark gold - hover states */
-    --color-gold-500: #D4AF37;  /* Primary gold - CTAs, highlights */
-    --color-gold-400: #E5C158;  /* Light gold - hover, secondary */
+    /* Brand Colors - Gold & Bronze (Logo Colors) */
+    --color-gold-700: #8B6644;  /* Dark Bronze - darkest accent (Logo color) */
+    --color-gold-600: #B8885E;  /* Bronze - hover states (Logo color) */
+    --color-gold-500: #D4A574;  /* Primary Gold - CTAs, highlights (Logo color) */
+    --color-gold-400: #E8C9A0;  /* Light Gold - hover, secondary (Logo color) */
     --color-gold-300: #F0D17A;  /* Lighter gold - subtle accents */
     --color-gold-100: #F9F5E8;  /* Gold tint - backgrounds */
     --color-gold-50: #FDFBF5;   /* Lightest gold - subtle backgrounds */
@@ -90,14 +91,14 @@
     --radius-xl: 1rem;      /* 16px - modals, containers */
     --radius-full: 9999px;   /* Full - pills, avatars */
     
-    /* Shadows - Depth & Elevation */
-    --shadow-sm: 0 1px 2px 0 rgba(10, 25, 41, 0.05);
-    --shadow-base: 0 1px 3px 0 rgba(10, 25, 41, 0.1), 0 1px 2px 0 rgba(10, 25, 41, 0.06);
-    --shadow-md: 0 4px 6px -1px rgba(10, 25, 41, 0.1), 0 2px 4px -1px rgba(10, 25, 41, 0.06);
-    --shadow-lg: 0 10px 15px -3px rgba(10, 25, 41, 0.1), 0 4px 6px -2px rgba(10, 25, 41, 0.05);
-    --shadow-xl: 0 20px 25px -5px rgba(10, 25, 41, 0.1), 0 10px 10px -5px rgba(10, 25, 41, 0.04);
-    --shadow-2xl: 0 25px 50px -12px rgba(10, 25, 41, 0.25);
-    --shadow-gold: 0 4px 14px 0 rgba(212, 175, 55, 0.25); /* Gold glow for premium elements */
+  /* Shadows - Depth & Elevation (Updated for Logo Navy) */
+  --shadow-sm: 0 1px 2px 0 rgba(10, 22, 40, 0.05);
+  --shadow-base: 0 1px 3px 0 rgba(10, 22, 40, 0.1), 0 1px 2px 0 rgba(10, 22, 40, 0.06);
+  --shadow-md: 0 4px 6px -1px rgba(10, 22, 40, 0.1), 0 2px 4px -1px rgba(10, 22, 40, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(10, 22, 40, 0.1), 0 4px 6px -2px rgba(10, 22, 40, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(10, 22, 40, 0.1), 0 10px 10px -5px rgba(10, 22, 40, 0.04);
+  --shadow-2xl: 0 25px 50px -12px rgba(10, 22, 40, 0.25);
+    --shadow-gold: 0 4px 14px 0 rgba(212, 165, 116, 0.25); /* Gold glow for premium elements (Logo gold) */
     
   /* Transitions - Smooth & Confident */
   --transition-fast: 150ms ease-in-out;
@@ -151,16 +152,17 @@
 }
 
 @theme {
-  /* Brand Colors */
+  /* Brand Colors - Matching Logo */
   --color-navy-950: #050B14;
-  --color-navy-900: #0A1929;
+  --color-navy-900: #0A1628;  /* Logo Navy/Black */
   --color-navy-800: #1A2332;
   --color-navy-700: #2A3441;
   --color-navy-600: #3A4450;
   
-  --color-gold-600: #B8941F;
-  --color-gold-500: #D4AF37;
-  --color-gold-400: #E5C158;
+  --color-gold-700: #8B6644;  /* Dark Bronze (Logo) */
+  --color-gold-600: #B8885E;  /* Bronze (Logo) */
+  --color-gold-500: #D4A574;  /* Primary Gold (Logo) */
+  --color-gold-400: #E8C9A0;  /* Light Gold (Logo) */
   --color-gold-300: #F0D17A;
   --color-gold-100: #F9F5E8;
   --color-gold-50: #FDFBF5;
@@ -214,14 +216,14 @@
   --radius-xl: 1rem;
   --radius-full: 9999px;
   
-  /* Shadows */
-  --shadow-sm: 0 1px 2px 0 rgba(10, 25, 41, 0.05);
-  --shadow-base: 0 1px 3px 0 rgba(10, 25, 41, 0.1), 0 1px 2px 0 rgba(10, 25, 41, 0.06);
-  --shadow-md: 0 4px 6px -1px rgba(10, 25, 41, 0.1), 0 2px 4px -1px rgba(10, 25, 41, 0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(10, 25, 41, 0.1), 0 4px 6px -2px rgba(10, 25, 41, 0.05);
-  --shadow-xl: 0 20px 25px -5px rgba(10, 25, 41, 0.1), 0 10px 10px -5px rgba(10, 25, 41, 0.04);
-  --shadow-2xl: 0 25px 50px -12px rgba(10, 25, 41, 0.25);
-  --shadow-gold: 0 4px 14px 0 rgba(212, 175, 55, 0.25);
+  /* Shadows (Updated for Logo Navy) */
+  --shadow-sm: 0 1px 2px 0 rgba(10, 22, 40, 0.05);
+  --shadow-base: 0 1px 3px 0 rgba(10, 22, 40, 0.1), 0 1px 2px 0 rgba(10, 22, 40, 0.06);
+  --shadow-md: 0 4px 6px -1px rgba(10, 22, 40, 0.1), 0 2px 4px -1px rgba(10, 22, 40, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(10, 22, 40, 0.1), 0 4px 6px -2px rgba(10, 22, 40, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(10, 22, 40, 0.1), 0 10px 10px -5px rgba(10, 22, 40, 0.04);
+  --shadow-2xl: 0 25px 50px -12px rgba(10, 22, 40, 0.25);
+  --shadow-gold: 0 4px 14px 0 rgba(212, 165, 116, 0.25); /* Logo gold */
 }
 
 @layer base {
@@ -417,6 +419,10 @@
   
   .input-luxury:disabled {
     @apply bg-gray-100 cursor-not-allowed opacity-60;
+  }
+  
+  .input-luxury:focus {
+    box-shadow: 0 0 0 3px rgba(212, 165, 116, 0.1); /* Logo gold focus ring */
   }
   
   /* Badges - Status Indicators */
@@ -693,11 +699,12 @@
   }
   
   .link-luxury:hover {
-    color: var(--color-gold-600);
+    color: var(--color-gold-600); /* Bronze hover */
   }
   
   .link-luxury:hover::after {
     width: 100%;
+    background: var(--color-gold-500); /* Logo gold */
   }
   
   /* Input Focus States */
@@ -707,8 +714,8 @@
   }
   
   .input-focus:focus {
-    border-color: var(--color-gold-500);
-    box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
+    border-color: var(--color-gold-500); /* Logo gold */
+    box-shadow: 0 0 0 3px rgba(212, 165, 116, 0.1); /* Logo gold focus ring */
   }
   
   /* Smooth Scale on Hover */

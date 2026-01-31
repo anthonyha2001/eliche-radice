@@ -39,7 +39,7 @@ export default function Footer({
             <div className="lg:col-span-1 text-center lg:text-left">
               {showLogo && (
                 <div className="mb-4">
-                  {logo || <Logo variant="footer" />}
+                  {logo || <Logo variant="footer" showText={false} />}
                 </div>
               )}
               <p className="text-gray-300 text-sm mb-2">

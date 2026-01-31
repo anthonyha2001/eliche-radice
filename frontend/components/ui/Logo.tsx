@@ -44,14 +44,22 @@ export default function Logo({
       watermark: { width: 120, height: 40 },
     };
     
+    // Different logo files for different variants
+    const logoFiles = {
+      default: '/images/Logo navy-01.png', // Navbar uses navy logo
+      footer: '/images/Logo white-01.png', // Footer uses white logo
+      watermark: '/images/Logo navy-01.png', // Watermark uses navy logo
+    };
+    
     const logoSize = logoSizes[variant];
+    const logoFile = logoFiles[variant];
     
     return (
       <div className={`flex items-center gap-0 ${sizeStyles[variant]} ${paddingStyles[variant]} ${className}`}>
         {/* Logo Image - No Background, no spacing, fits parent height */}
         <div className={`flex-shrink-0 -mr-0 ${variant === 'default' ? 'h-full' : ''}`}>
           <Image
-            src="/images/Logo white-01.png"
+            src={logoFile}
             alt="Eliche Radice LB"
             width={logoSize.width}
             height={logoSize.height}
