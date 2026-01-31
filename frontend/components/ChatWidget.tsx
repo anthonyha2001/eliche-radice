@@ -44,37 +44,67 @@ export default function ChatWidget() {
     }
   }, []);
 
+  // Load stored customer info and create conversation if needed
   useEffect(() => {
-    const storedId = localStorage.getItem('eliche_conversation_id');
-    const storedInfo = localStorage.getItem('eliche_customer_info');
-    
-    console.log('💾 Loading stored data:', { storedId, storedInfo });
-    
-    // Load conversation if exists
-    if (storedId) {
-      setConversationId(storedId);
-      loadConversationMessages(storedId);
-      setCollectionStep('complete');
-    }
-    
-    // Load customer info if exists
-    if (storedInfo) {
-      try {
+    if (!isOpen) return;
+
+    try {
+      const storedId = localStorage.getItem('elicheradice_conversation_id');
+      const storedInfo = localStorage.getItem('elicheradice_customer_info');
+      
+      console.log('💾 Loading stored data:', { storedId, storedInfo });
+      
+      if (storedId && storedInfo) {
         const info = JSON.parse(storedInfo);
-        setCustomerName(info.name);
-        setCustomerPhone(info.phone);
-        setCollectionStep('complete');
         console.log('✅ Customer info loaded:', info.name);
-      } catch (error) {
-        console.error('Failed to parse customer info:', error);
+        
+        // Set all the data
+        setConversationId(storedId);
+        setCustomerName(info.name || '');
+        setCustomerPhone(info.phone || '');
+        setCollectionStep('complete');
+        
+        // Load messages for this conversation
+        loadConversationMessages(storedId);
+        
+        // Verify conversation still exists on backend
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+        const cleanUrl = apiUrl.replace(/\/$/, '');
+        
+        fetch(`${cleanUrl}/api/conversations/${storedId}`)
+          .then(r => {
+            if (!r.ok) {
+              // Conversation doesn't exist anymore, clear storage
+              console.log('⚠️ Stored conversation not found, clearing');
+              localStorage.removeItem('elicheradice_conversation_id');
+              localStorage.removeItem('elicheradice_customer_info');
+              setConversationId(null);
+              setCollectionStep('idle');
+            } else {
+              console.log('✅ Stored conversation still valid');
+            }
+          })
+          .catch(err => {
+            console.warn('⚠️ Could not verify conversation, clearing:', err);
+            localStorage.removeItem('elicheradice_conversation_id');
+            localStorage.removeItem('elicheradice_customer_info');
+            setConversationId(null);
+            setCollectionStep('idle');
+          });
+      } else {
+        console.log('📝 No stored data, starting fresh');
+        setCollectionStep('idle');
       }
-    }
-    
-    // If no conversation, start collection flow
-    if (!storedId && !storedInfo && isOpen) {
+    } catch (error) {
+      console.error('❌ Error loading stored data:', error);
+      localStorage.removeItem('elicheradice_conversation_id');
+      localStorage.removeItem('elicheradice_customer_info');
       setCollectionStep('idle');
     }
-    
+  }, [isOpen]);
+  
+  // Initialize socket and set up listeners
+  useEffect(() => {
     // Initialize socket
     socketRef.current = getSocket();
     
@@ -190,7 +220,8 @@ export default function ChatWidget() {
         alert('Your request has been resolved. Thank you for contacting Eliche Radice LB! You can start a new conversation anytime.');
 
         // Clear conversation from customer side only
-        localStorage.removeItem('eliche_conversation_id');
+        localStorage.removeItem('elicheradice_conversation_id');
+        localStorage.removeItem('elicheradice_customer_info');
         setConversationId(null);
         setMessages([]);
         setConversationStatus('active');
@@ -246,9 +277,9 @@ export default function ChatWidget() {
     }
   }, [conversationId, isConnected]);
   
-  // Initialize welcome message when chat opens
+  // Initialize welcome message when chat opens (only if no stored conversation)
   useEffect(() => {
-    if (isOpen && messages.length === 0) {
+    if (isOpen && messages.length === 0 && collectionStep === 'idle') {
       console.log('✅ Adding welcome message');
       const welcomeMessage = {
         id: 'welcome',
@@ -260,7 +291,7 @@ export default function ChatWidget() {
       setMessages([welcomeMessage]);
       console.log('✅ Welcome message added to state');
     }
-  }, [isOpen, messages.length]);
+  }, [isOpen, messages.length, collectionStep]);
 
   const addSystemMessage = (content: string) => {
     console.log('📨 Adding system message:', content);
@@ -332,10 +363,13 @@ export default function ChatWidget() {
         setConversationId(convId);
         console.log('✅ setConversationId called with:', convId);
         
-        // Save to localStorage
-        localStorage.setItem('eliche_conversation_id', convId);
-        localStorage.setItem('eliche_customer_info', JSON.stringify({ name, phone }));
-        console.log('✅ Saved to localStorage');
+        // SAVE TO LOCALSTORAGE
+        localStorage.setItem('elicheradice_conversation_id', convId);
+        localStorage.setItem('elicheradice_customer_info', JSON.stringify({
+          name: name,
+          phone: phone
+        }));
+        console.log('💾 Saved to localStorage');
         
         // Subscribe to conversation
         if (socketRef.current?.connected) {
@@ -349,7 +383,7 @@ export default function ChatWidget() {
         // Verify it was set (check after a brief delay)
         setTimeout(() => {
           console.log('🔍 Verifying conversation ID was set...');
-          const storedId = localStorage.getItem('eliche_conversation_id');
+          const storedId = localStorage.getItem('elicheradice_conversation_id');
           console.log('🔍 Stored ID:', storedId);
         }, 100);
         
@@ -555,8 +589,8 @@ export default function ChatWidget() {
             <button
               onClick={() => {
                 if (confirm('Start a new conversation? Current conversation will be cleared.')) {
-                  localStorage.removeItem('eliche_conversation_id');
-                  localStorage.removeItem('eliche_customer_info');
+                  localStorage.removeItem('elicheradice_conversation_id');
+                  localStorage.removeItem('elicheradice_customer_info');
                   setConversationId(null);
                   setCustomerName('');
                   setCustomerPhone('');
