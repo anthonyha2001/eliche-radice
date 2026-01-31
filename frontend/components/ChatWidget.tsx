@@ -245,7 +245,8 @@ export default function ChatWidget() {
   
   // Initialize welcome message when chat opens
   useEffect(() => {
-    if (isOpen && messages.length === 0 && collectionStep === 'idle') {
+    if (isOpen && messages.length === 0) {
+      console.log('✅ Adding welcome message');
       const welcomeMessage = {
         id: 'welcome',
         sender: 'operator',
@@ -254,8 +255,9 @@ export default function ChatWidget() {
         isSystem: true
       };
       setMessages([welcomeMessage]);
+      console.log('✅ Welcome message added to state');
     }
-  }, [isOpen, collectionStep]);
+  }, [isOpen, messages.length]);
 
   const addSystemMessage = (content: string) => {
     console.log('📨 Adding system message:', content);

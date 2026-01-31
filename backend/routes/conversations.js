@@ -79,17 +79,22 @@ router.post('/', async (req, res) => {
   try {
     const { customerId, priority, customerName, customerPhone } = req.body;
 
+    console.log('📨 Creating conversation:', { customerId, customerName, customerPhone, priority });
+
     if (!customerId || typeof customerId !== 'string' || customerId.trim().length === 0) {
+      console.error('❌ Customer ID required');
       return res.status(400).json({ error: 'Customer ID required' });
     }
 
     // Validate priority if provided
     if (priority && !VALID_PRIORITIES.includes(priority)) {
+      console.error('❌ Invalid priority:', priority);
       return res.status(400).json({
         error: `Invalid priority. Must be one of: ${VALID_PRIORITIES.join(', ')}`,
       });
     }
 
+    console.log('🔄 Calling Conversation.create...');
     const conversation = await Conversation.create(
       customerId.trim(),
       priority || 'normal',
@@ -97,7 +102,14 @@ router.post('/', async (req, res) => {
       customerPhone || null
     );
 
-    console.log('🆕 New conversation created:', conversation.id);
+    console.log('✅ Conversation created:', conversation.id);
+    console.log('✅ Conversation data:', {
+      id: conversation.id,
+      customerId: conversation.customerId,
+      customerName: conversation.customerName,
+      customerPhone: conversation.customerPhone,
+      priority: conversation.priority
+    });
 
     // Broadcast to ALL operators via Socket.io
     const io = req.app.get('io');
