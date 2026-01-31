@@ -258,6 +258,7 @@ export default function ChatWidget() {
   }, [isOpen, collectionStep]);
 
   const addSystemMessage = (content: string) => {
+    console.log('📨 Adding system message:', content);
     const systemMsg = {
       id: `system-${Date.now()}`,
       sender: 'operator',
@@ -265,32 +266,61 @@ export default function ChatWidget() {
       timestamp: Date.now(),
       isSystem: true
     };
-    setMessages(prev => [...prev, systemMsg]);
+    setMessages(prev => {
+      console.log('📨 Previous messages:', prev.length);
+      const newMessages = [...prev, systemMsg];
+      console.log('📨 New messages:', newMessages.length);
+      return newMessages;
+    });
+    // Scroll will be handled by MessageList component's auto-scroll
   };
 
   const createConversationWithInfo = async (name: string, phone: string) => {
+    console.log('🔄 createConversationWithInfo called');
+    console.log('🔄 Name:', name);
+    console.log('🔄 Phone:', phone);
+    
     try {
       const customerId = 'customer-' + Date.now();
+      console.log('🔄 Customer ID:', customerId);
+      console.log('🔄 Calling createConversation API...');
+      
       const response = await createConversation(customerId, 'normal', name, phone);
+      console.log('🔄 API response received:', response);
+      
       const newConvId = response.data.id;
+      console.log('✅ New conversation ID:', newConvId);
       
       setConversationId(newConvId);
+      console.log('✅ Conversation ID set in state');
+      
       localStorage.setItem('eliche_conversation_id', newConvId);
       localStorage.setItem('eliche_customer_info', JSON.stringify({ name, phone }));
+      console.log('✅ Saved to localStorage');
       
       // Subscribe to conversation
       if (socketRef.current?.connected) {
+        console.log('📡 Subscribing to conversation via socket');
         socketRef.current.emit('conversation:subscribe', newConvId);
+        console.log('✅ Subscription event emitted');
+      } else {
+        console.warn('⚠️ Socket not connected, cannot subscribe');
       }
       
       console.log('✅ Conversation created with customer info');
       
       // Send admin notification
+      console.log('📧 Sending admin notification...');
       await sendAdminNotification(name, phone, newConvId);
+      console.log('✅ Admin notification sent');
       
       return newConvId;
     } catch (error) {
       console.error('❌ Failed to create conversation:', error);
+      console.error('❌ Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined
+      });
       addSystemMessage('Sorry, something went wrong. Please try again.');
       throw error;
     }
@@ -318,43 +348,69 @@ export default function ChatWidget() {
   };
   
   const handleSendMessage = async (content: string) => {
-    if (!content.trim()) return;
+    console.log('🔵 handleSendMessage called');
+    console.log('🔵 Input content:', content);
+    console.log('🔵 Collection step:', collectionStep);
+    console.log('🔵 Conversation ID:', conversationId);
+    console.log('🔵 Customer name:', customerName);
+    console.log('🔵 Customer phone:', customerPhone);
+    console.log('🔵 Is connected:', isConnected);
     
+    if (!content.trim()) {
+      console.log('❌ Empty input, returning');
+      return;
+    }
+
     const messageContent = content.trim();
-    
+    console.log('🔵 Message content (trimmed):', messageContent);
+    console.log('🔵 Current step:', collectionStep);
+
     // Handle customer info collection flow
     if (collectionStep === 'idle') {
-      // First message - ask for name
+      console.log('✅ Step: idle → asking for name');
       addSystemMessage('Can we please have your name to serve you better?');
       setCollectionStep('collecting_name');
+      console.log('✅ Step changed to: collecting_name');
       return;
     }
 
     if (collectionStep === 'collecting_name') {
-      // Save name, ask for phone
+      console.log('✅ Step: collecting_name → saving name and asking for phone');
+      console.log('✅ Name received:', messageContent);
       setCustomerName(messageContent);
       addSystemMessage(`Thank you, ${messageContent}! And your phone number please?`);
       setCollectionStep('collecting_phone');
+      console.log('✅ Step changed to: collecting_phone');
+      console.log('✅ Customer name set to:', messageContent);
       return;
     }
 
     if (collectionStep === 'collecting_phone') {
-      // Save phone and create conversation
+      console.log('✅ Step: collecting_phone → saving phone and creating conversation');
+      console.log('✅ Phone received:', messageContent);
+      console.log('✅ Customer name (from state):', customerName);
       setCustomerPhone(messageContent);
       setCollectionStep('complete');
+      console.log('✅ Step changed to: complete');
+      console.log('✅ Customer phone set to:', messageContent);
       
       try {
+        console.log('🔄 Creating conversation with info...');
         await createConversationWithInfo(customerName, messageContent);
+        console.log('✅ Conversation created successfully');
         addSystemMessage('Thank you! Our team will assist you shortly. How can we help you today?');
       } catch (error) {
+        console.error('❌ Error creating conversation:', error);
         // Error already handled in createConversationWithInfo
         setCollectionStep('collecting_phone'); // Retry phone collection
+        console.log('🔄 Retrying phone collection step');
       }
       return;
     }
 
-    // Normal message flow (after info collected)
+    console.log('🔵 Normal message flow, conversationId:', conversationId);
     if (conversationId) {
+      console.log('✅ Sending message to conversation:', conversationId);
       // Add message optimistically
       const tempMessage = {
         id: `temp-${Date.now()}`,
@@ -363,13 +419,26 @@ export default function ChatWidget() {
         content: messageContent,
         timestamp: Date.now()
       };
-      setMessages(prev => [...prev, tempMessage]);
+      console.log('📤 Adding temp message to UI:', tempMessage);
+      setMessages(prev => {
+        const newMessages = [...prev, tempMessage];
+        console.log('📤 Messages after adding temp:', newMessages.length);
+        return newMessages;
+      });
       
       // Send via Socket.io
+      console.log('📡 Emitting message:new via socket');
+      console.log('📡 Socket connected?', socketRef.current?.connected);
+      console.log('📡 Socket exists?', !!socketRef.current);
       socketRef.current?.emit('message:new', {
         conversationId,
         content: messageContent,
       });
+      console.log('✅ message:new event emitted');
+    } else {
+      console.error('❌ No conversation ID, cannot send message');
+      console.error('❌ Collection step:', collectionStep);
+      console.error('❌ Conversation ID state:', conversationId);
     }
   };
   
