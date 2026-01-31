@@ -49,34 +49,36 @@ export default function AISuggestionPanel({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="font-semibold text-sm text-gray-700">AI Suggestions</h3>
+        <h3 className="font-semibold text-sm md:text-base text-gray-700">AI Suggestions</h3>
         <button
           onClick={onRefresh}
-          className="text-gold-500 hover:text-gold-600 text-sm"
+          className="text-gold-500 hover:text-gold-600 active:opacity-70 p-1.5 touch-manipulation"
           aria-label="Refresh suggestions"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-4 h-4 md:w-5 md:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
         </button>
       </div>
       
-      {suggestions.map((suggestion, index) => (
-        <div
-          key={suggestion.id}
-          className="p-3 border border-gray-200 rounded-lg hover:border-gold-400 transition-colors"
-        >
-          <p className="text-sm text-gray-700 mb-2">{suggestion.content}</p>
-          <div className="flex space-x-2">
-            <button
-              onClick={() => onUse(suggestion.content)}
-              className="text-xs text-gold-500 hover:text-gold-600 font-semibold"
-            >
-              Use this →
-            </button>
+      <div className="space-y-2 md:space-y-3 max-h-[calc(100vh-200px)] overflow-y-auto">
+        {suggestions.map((suggestion, index) => (
+          <div
+            key={suggestion.id}
+            className="p-3 md:p-4 border border-gray-200 rounded-lg hover:border-gold-400 active:border-gold-500 transition-colors"
+          >
+            <p className="text-sm md:text-base text-gray-700 mb-2.5 break-words">{suggestion.content}</p>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => onUse(suggestion.content)}
+                className="text-xs md:text-sm text-gold-500 hover:text-gold-600 active:text-gold-700 font-semibold py-1 px-2 touch-manipulation"
+              >
+                Use this →
+              </button>
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }
