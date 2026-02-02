@@ -6,7 +6,6 @@ import {
   Footer,
   SectionHeader,
   ServiceCard,
-  TestimonialCard,
   FeatureList,
   Button,
   RevealOnScroll,
@@ -78,7 +77,7 @@ export default function Home() {
 
   const features = useMemo(() => [
     {
-      title: '15+ Years Experience',
+      title: '30+ Years Experience',
       description: 'Trusted expertise in luxury yacht maintenance',
       icon: <Award className="w-6 h-6 md:w-7 md:h-7" strokeWidth={1.3} aria-hidden="true" />,
     },
@@ -96,23 +95,6 @@ export default function Home() {
       title: 'Certified Technicians',
       description: 'Expert professionals with marine certifications',
       icon: <Users className="w-6 h-6 md:w-7 md:h-7" strokeWidth={1.3} aria-hidden="true" />,
-    },
-  ], []);
-
-  const testimonials = useMemo(() => [
-    {
-      quote: 'Exceptional service and attention to detail. Eliche Radice LB keeps our yacht in perfect condition.',
-      author: 'Michael Chen',
-      role: 'Yacht Owner',
-      company: 'Sea Breeze',
-      rating: 5,
-    },
-    {
-      quote: 'The fastest response time I\'ve experienced. Professional, reliable, and always available.',
-      author: 'Sarah Johnson',
-      role: 'Fleet Manager',
-      company: 'Maritime Holdings',
-      rating: 5,
     },
   ], []);
 
@@ -243,7 +225,7 @@ export default function Home() {
                       label: 'Step 4',
                       title: 'Schedule',
                       description:
-                        'We agree on the best time and location for the work, coordinating with your marina where needed.',
+                        'We agree on the best time and location for the work, coordinating with jounieh where needed.',
                     },
                     {
                       label: 'Step 5',
@@ -293,26 +275,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Testimonials Section */}
-        <section className="section-light bg-gray-50">
-          <div className="container container-xl">
-            <RevealOnScroll>
-              <SectionHeader
-                title="What Our Clients Say"
-                subtitle="Trusted by yacht owners and fleet managers"
-                align="center"
-              />
-            </RevealOnScroll>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8 mt-12">
-              {testimonials.map((testimonial, index) => (
-                <RevealOnScroll key={index} delay={index * 100}>
-                  <TestimonialCard {...testimonial} />
-                </RevealOnScroll>
-              ))}
-            </div>
-          </div>
-        </section>
 
         {/* CTA Section */}
         <section className="section-marine" aria-labelledby="cta-heading">

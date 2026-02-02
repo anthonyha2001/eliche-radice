@@ -218,7 +218,7 @@ function RequestServiceContent() {
                         type="text"
                         value={formData.location}
                         onChange={(e) => updateFormData('location', e.target.value)}
-                        placeholder="Marina or location"
+                        placeholder="Jounieh or location"
                         className="input-luxury input-focus w-full"
                       />
                     </div>

@@ -50,9 +50,9 @@ export default function ProjectsPage() {
   const projects = [
     {
       title: '80ft Motor Yacht – Full Systems Overhaul',
-      scope: 'Complete maintenance, electrical upgrades, and propulsion tuning in Beirut Marina.',
+      scope: 'Complete maintenance, electrical upgrades, and propulsion tuning in Jounieh.',
       categories: ['maintenance', 'engine'],
-      tags: ['80ft motor yacht', 'Full overhaul', 'Beirut Marina'],
+      tags: ['80ft motor yacht', 'Full overhaul', 'Jounieh'],
     },
     {
       title: '65ft Sailing Yacht – Engine Restoration',

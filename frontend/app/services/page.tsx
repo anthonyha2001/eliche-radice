@@ -91,7 +91,7 @@ export default function ServicesPage() {
       features: [
         'Phone & live chat support',
         'Step-by-step guidance',
-        'Coordination with marinas',
+        'Coordination with jounieh',
         'Follow-up inspection on arrival',
       ],
     },

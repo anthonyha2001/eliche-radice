@@ -137,7 +137,7 @@ export default function ContactPage() {
 
                 {/* Map placeholder */}
                 <div className="rounded-2xl bg-gray-100 aspect-[4/3] flex items-center justify-center text-gray-400 text-sm">
-                  Map / marina location placeholder
+                  Map / jounieh location placeholder
                 </div>
               </div>
             </div>

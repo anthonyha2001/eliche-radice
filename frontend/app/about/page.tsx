@@ -12,7 +12,7 @@ import { Instagram, Facebook } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'About Us - Eliche Radice LB | Yacht Maintenance Experts',
-  description: 'Learn about Eliche Radice LB: craftsmanship built on reliability. Expert yacht maintenance team with 15+ years experience in Lebanon.',
+  description: 'Learn about Eliche Radice LB: craftsmanship built on reliability. Expert yacht maintenance team with 30+ years experience in Lebanon.',
   openGraph: {
     title: 'About Eliche Radice LB',
     description: 'Craftsmanship built on reliability. Expert yacht maintenance team.',
@@ -116,7 +116,7 @@ export default function AboutPage() {
               />
               <div className="mt-6 space-y-4 text-marine text-sm leading-relaxed">
                 <p>
-                  What began as a small, owner-led workshop supporting a handful of yachts in one marina
+                  What began as a small, owner-led workshop supporting a handful of yachts in jounieh
                   has grown into a focused maintenance partner for demanding owners and captains.
                 </p>
                 <p>
