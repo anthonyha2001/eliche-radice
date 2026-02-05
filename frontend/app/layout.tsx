@@ -30,9 +30,13 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: '/images/Logo navy-01.png', type: 'image/png' },
+      { url: '/images/Logo navy-01.png', sizes: 'any', type: 'image/png' },
+      { url: '/images/Logo navy-01.png', sizes: '32x32', type: 'image/png' },
+      { url: '/images/Logo navy-01.png', sizes: '16x16', type: 'image/png' },
     ],
-    apple: '/images/Logo navy-01.png',
+    apple: [
+      { url: '/images/Logo navy-01.png', sizes: '180x180', type: 'image/png' },
+    ],
     shortcut: '/images/Logo navy-01.png',
   },
   other: {
