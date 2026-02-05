@@ -30,10 +30,10 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: '/images/Logo white-01.png', type: 'image/png' },
+      { url: '/images/Logo navy-01.png', type: 'image/png' },
     ],
-    apple: '/images/Logo white-01.png',
-    shortcut: '/images/Logo white-01.png',
+    apple: '/images/Logo navy-01.png',
+    shortcut: '/images/Logo navy-01.png',
   },
   other: {
     'preconnect': cleanApiUrl,
